@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/pgvector/pgvector-go"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -14,13 +16,15 @@ var schema = `
 CREATE TABLE IF NOT EXISTS person (
 	first_name text,
 	last_name text,
-	email text
+	email text,
+	embedding vector(3)
 );`
 
 type Person struct {
-	FirstName string `db:"first_name"`
-	LastName  string `db:"last_name"`
-	Email     string `db:"email"`
+	FirstName string          `db:"first_name"`
+	LastName  string          `db:"last_name"`
+	Email     string          `db:"email"`
+	Embedding pgvector.Vector `db:"embedding"`
 }
 
 const db_user = "user"
@@ -40,6 +44,7 @@ func main() {
 	defer db.Close()
 
 	app := &App{db: db}
+	db.MustExec("CREATE EXTENSION IF NOT EXISTS vector;")
 	db.MustExec(schema)
 
 	server := http.Server{
@@ -57,9 +62,16 @@ func main() {
 
 func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("hit index handler\n")
-	app.db.Exec("INSERT INTO person (first_name, last_name, email) VALUES ($1, $2, $3)", "Max", "Glass", "glass@u.northwestern.edu")
-	fmt.Printf("inserted into db\n")
-	people := []Person{}
-	app.db.Select(&people, "SELECT * FROM person")
-	fmt.Printf("people: %+v\n", people)
+	people := []Person{
+		Person{FirstName: "Max", LastName: "Glass", Email: "glass@u.northwestern.edu", Embedding: pgvector.NewVector([]float32{1, 1, 1})},
+		Person{FirstName: "Blake", LastName: "Hu", Email: "email", Embedding: pgvector.NewVector([]float32{2, 2, 2})},
+	}
+	_, err := app.db.NamedExec("INSERT INTO person (first_name, last_name, email, embedding) VALUES (:first_name, :last_name, :email, :embedding)", people)
+	if err != nil {
+		log.Fatalf("failed to insert %s\n", err.Error())
+	}
+
+	var selected_people []Person
+	app.db.Select(&selected_people, "SELECT * FROM person ORDER BY embedding <-> $1", pgvector.NewVector([]float32{1, 1, 1}))
+	fmt.Printf("people: %+v\n", selected_people)
 }
