@@ -1,0 +1,114 @@
+
+
+.outlineBorder {
+    background-color: #ffffff;
+    border: 1px solid;
+    border-color: #bcbcbc;
+    border-radius: 15px;
+    height: 568px;
+    width: 500px;
+    margin: auto;
+    vertical-align: middle;
+
+}
+
+.signIn{
+  color: #000000;
+  font-family: "Inter-Regular", Helvetica;
+  font-size: 32px;
+  font-weight: 400;
+  text-align: center;
+  padding-top: 17%;
+}
+
+.with{
+  color: #000000;
+  font-family: "Inter-Regular", Helvetica;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: normal;
+  white-space: nowrap;
+  text-align: center;
+  padding-top: 3%;
+  padding-bottom: 7%;
+}
+
+.TextField{
+    max-width: fit-content;
+    margin:auto;
+    padding:1%;
+}
+.textfield{
+    width: 325px;
+}
+
+.forgotPassword {
+    color: #000000;
+    font-family: "Inter-Regular", Helvetica;
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: normal;
+    white-space: nowrap;
+    width: 170px;
+    display: block;
+    text-transform: none;
+    padding-top: 3%;
+    margin-left: 17%;
+}
+
+.forgotPassword:hover {
+    text-decoration: underline;
+}
+
+.register {
+    color: #000000;
+    font-family: "Inter-Regular", Helvetica;
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: normal;
+    white-space: nowrap;
+    width: 151px;
+    margin-left: 17%;
+    margin-right: 24%;
+}
+
+.registerauthenticate{
+    margin-top: 10%;
+}
+
+.auth{
+    background-color: #000000;
+    border-radius: 5px;
+    height: 45px;
+    width: 153px;
+    color:white;
+}
+
+.auth:hover{
+    background-color: gray;
+}
+
+.register:hover{
+    color:gray;
+    text-decoration: underline;
+}
+
+
+.successOutlineBorder{
+    background-color: #ffffff;
+    border: 2px solid;
+    border-color: lightgreen;
+    border-radius: 15px;
+    height: 568px;
+    width: 500px;
+    margin: auto;
+    color:lightgreen;
+    text-align: center;
+    display:block;
+    font-size: 25px;
+    font-family: "Inter-Regular", Helvetica;
+
+}
