@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from deepface import DeepFace
 from PIL import Image
 import numpy as np
+import json
+import base64
 
 app = Flask(__name__)
 
@@ -21,16 +23,23 @@ def generate_embedding():
         img_array = np.array(img).astype(int)
 
         # Detect face and generate embeddings
-        embedding_objs = DeepFace.represent(img_path=img_array, model_name='Facenet', enforce_detection=False)
+        embedding_objs = DeepFace.represent(img_path=img_array, model_name='VGG-Face', enforce_detection=False)
 
         # Extract the embeddings
         embedding = embedding_objs[0]["embedding"]
-        print(embedding)
 
     except Exception as e:
         return jsonify({'error': str(e)})
 
-    return jsonify({'embedding': embedding})
+    # Serialize the embedding list to JSON
+    embedding_json = json.dumps(embedding)
+
+    # Encode the JSON string using Base64
+    encoded_embedding = base64.b64encode(embedding_json.encode('utf-8'))
+
+    # Return the encoded embedding
+    return jsonify({'encoded_embedding': encoded_embedding.decode('utf-8')})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
