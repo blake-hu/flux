@@ -6,15 +6,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
-	// "github.com/pion/interceptor"
-	// "github.com/pion/interceptor/pkg/intervalpli"
-	// "github.com/pion/webrtc/v4"
+	"github.com/pion/webrtc/v4"
 
 	"github.com/gorilla/websocket"
 )
@@ -34,36 +34,41 @@ type Person struct {
 	Embedding pgvector.Vector `db:"embedding"`
 }
 
-//	type PingMessage struct {
-//		Ping string `json:"ping"`
-//	}
-//
-//	type PongMessage struct {
-//		Pong string `json:"pong"`
-//	}
-//
-//	type WsMessage struct {
-//		Type string      `json:"type"`
-//		Data interface{} `json:"data"`
-//
-// }
-
 type Command string
 
 const (
-	CommandPing Command = "ping"
-	CommandPong Command = "pong"
+	CommandPing         Command = "ping"
+	CommandPong         Command = "pong"
+	CommandIceOffer     Command = "IceOffer"
+	CommandIceAnswer    Command = "IceAnswer"
+	CommandIceCandidate Command = "IceCandidate"
 )
+
+type PingPayload struct {
+	Data string `json:"data"`
+}
+
+type PongPayload struct {
+	Data string `json:"data"`
+}
+
+type IceOfferPayload struct {
+	Sdp  string `json:"sdp"`
+	Type string `json:"type"`
+}
+
+type IceAnswerPayload = IceOfferPayload
+
+type IceCandidatePayload struct {
+	Candidate        string `json:"candidate"`
+	SdpMid           string `json:"sdpMid"`
+	SdpMLineIndex    int    `json:"sdpMLineIndex"`
+	UsernameFragment string `json:"usernameFragment,omitempty"`
+}
 
 type WsMessage struct {
 	Command Command     `json:"command"`
 	Payload interface{} `json:"payload"`
-}
-type PingPayload struct {
-	Data string `json:"data"`
-}
-type PongPayload struct {
-	Data string `json:"data"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -78,7 +83,8 @@ const db_name = "mydb"
 const port = "8080"
 
 type App struct {
-	db *sqlx.DB
+	db             *sqlx.DB
+	sessionManager *SessionManager
 }
 
 func main() {
@@ -154,7 +160,7 @@ func main() {
 	// 	}
 	// })
 
-	app := &App{db: db}
+	app := &App{db: db, sessionManager: NewSessionManager()}
 	db.MustExec("CREATE EXTENSION IF NOT EXISTS vector;")
 	db.MustExec(schema)
 
@@ -202,10 +208,54 @@ func UnmarshalWsMessage(data string) (WsMessage, error) {
 			return msg, err
 		}
 		msg.Payload = payload
+	case CommandIceOffer:
+		var payload IceOfferPayload
+		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
+			return msg, err
+		}
+		msg.Payload = payload
 	default:
 		return WsMessage{}, fmt.Errorf("Unsupported command type: %s", msg.Command)
 	}
 	return msg, nil
+}
+
+func (app *App) handleIceOffer(payload IceOfferPayload, conn *websocket.Conn) (*webrtc.PeerConnection, error) {
+	log.Printf("handling ICE offer with SDP: %s and Type: %s", payload.Sdp, payload.Type)
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}},
+	}
+	peerConnection, err := webrtc.NewPeerConnection(config)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := peerConnection.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: payload.Sdp}); err != nil {
+		return nil, err
+	}
+
+	answer, err := peerConnection.CreateAnswer(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := peerConnection.SetLocalDescription(answer); err != nil {
+		return nil, err
+	}
+
+	answerMsg, err := MarshalWsMessage(WsMessage{
+		Command: CommandIceAnswer,
+		Payload: IceAnswerPayload{
+			Sdp:  answer.SDP,
+			Type: "answer",
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	conn.WriteMessage(websocket.TextMessage, []byte(answerMsg))
+	return peerConnection, nil
+
 }
 
 func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -253,9 +303,55 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			if err := c.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 				log.Printf("Error sending response: %s", err.Error())
 			}
+		case CommandIceOffer:
+			payload, ok := parsed_message.Payload.(IceOfferPayload)
+			if !ok {
+				log.Println("Invalid payload for ICE offer")
+				return
+			}
+			sessionId, err := gonanoid.New()
+			if err != nil {
+				log.Printf("Failed to create id: %s", err.Error())
+			}
+			pc, err := app.handleIceOffer(payload, c)
+			if err != nil {
+				log.Printf("Failed to handle ICE offer: %s", err.Error())
+				return
+			}
+			app.sessionManager.CreateSession(sessionId, pc)
+			defer func() {
+				pc.Close()
+				app.sessionManager.DeleteSession(sessionId)
+				log.Printf("Session %s deleted", sessionId)
+			}()
+			log.Printf("successfully created webrtc session: %s", sessionId)
+
+			pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+				if candidate != nil {
+					msg, err := MarshalWsMessage(WsMessage{
+						Command: CommandIceCandidate,
+						Payload: IceCandidatePayload{
+							Candidate:     candidate.ToJSON().Candidate,
+							SdpMid:        *candidate.ToJSON().SDPMid,
+							SdpMLineIndex: int(*candidate.ToJSON().SDPMLineIndex),
+						},
+					})
+					if err != nil {
+						log.Printf("Failed to marhsal ICE candidate message: %s", err.Error())
+						return
+					}
+					c.WriteMessage(websocket.TextMessage, []byte(msg))
+
+				}
+			})
+
+			// need to change this to a media channel probably for video
+			pc.OnDataChannel(func(d *webrtc.DataChannel) {
+				log.Printf("New Data Channel %s %d", d.Label(), d.ID())
+				// Setup callbacks for channel events like onmessage, onopen, etc.
+			})
 
 		}
-
 	}
 }
 
@@ -284,3 +380,46 @@ func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 //			     --- python
 // go server <-> |
 //		         --- python
+
+type Session struct {
+	ID             string
+	PeerConnection *webrtc.PeerConnection
+}
+
+type SessionManager struct {
+	sessions map[string]*Session
+	lock     sync.RWMutex
+}
+
+func NewSessionManager() *SessionManager {
+	return &SessionManager{
+		sessions: make(map[string]*Session),
+	}
+}
+
+func (manager *SessionManager) CreateSession(id string, conn *webrtc.PeerConnection) *Session {
+	manager.lock.Lock()
+	defer manager.lock.Unlock()
+	session := &Session{
+		ID:             id,
+		PeerConnection: conn,
+	}
+	manager.sessions[id] = session
+	return session
+}
+
+func (manager *SessionManager) GetSession(id string) (*Session, bool) {
+	manager.lock.Lock()
+	defer manager.lock.RUnlock()
+	session, exists := manager.sessions[id]
+	return session, exists
+}
+
+func (manager *SessionManager) DeleteSession(id string) {
+	manager.lock.Lock()
+	defer manager.lock.Unlock()
+	if session, exists := manager.sessions[id]; exists {
+		session.PeerConnection.Close()
+		delete(manager.sessions, id)
+	}
+}
