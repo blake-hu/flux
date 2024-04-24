@@ -62,7 +62,7 @@ type IceAnswerPayload = IceOfferPayload
 type IceCandidatePayload struct {
 	Candidate        string `json:"candidate"`
 	SdpMid           string `json:"sdpMid"`
-	SdpMLineIndex    int    `json:"sdpMLineIndex"`
+	SdpMLineIndex    uint16 `json:"sdpMLineIndex"`
 	UsernameFragment string `json:"usernameFragment,omitempty"`
 }
 
@@ -214,61 +214,114 @@ func UnmarshalWsMessage(data string) (WsMessage, error) {
 			return msg, err
 		}
 		msg.Payload = payload
+	case CommandIceCandidate:
+		var payload IceCandidatePayload
+		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
+			return msg, err
+		}
+		msg.Payload = payload
 	default:
 		return WsMessage{}, fmt.Errorf("Unsupported command type: %s", msg.Command)
 	}
 	return msg, nil
 }
 
-func (app *App) handleIceOffer(payload IceOfferPayload, conn *websocket.Conn) (*webrtc.PeerConnection, error) {
-	log.Printf("handling ICE offer with SDP: %s and Type: %s", payload.Sdp, payload.Type)
-	config := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}},
-	}
-	peerConnection, err := webrtc.NewPeerConnection(config)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := peerConnection.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: payload.Sdp}); err != nil {
-		return nil, err
+func (app *App) handleIceOffer(payload IceOfferPayload, peerConnection *webrtc.PeerConnection, conn *websocket.Conn) error {
+	desc := webrtc.SessionDescription{Type: webrtc.NewSDPType(payload.Type), SDP: payload.Sdp}
+	if err := peerConnection.SetRemoteDescription(desc); err != nil {
+		return err
 	}
 
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := peerConnection.SetLocalDescription(answer); err != nil {
-		return nil, err
+		return err
 	}
 
 	answerMsg, err := MarshalWsMessage(WsMessage{
 		Command: CommandIceAnswer,
 		Payload: IceAnswerPayload{
-			Sdp:  answer.SDP,
-			Type: "answer",
+			Sdp:  peerConnection.LocalDescription().SDP,
+			Type: peerConnection.LocalDescription().Type.String(),
 		},
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	conn.WriteMessage(websocket.TextMessage, []byte(answerMsg))
-	return peerConnection, nil
+	return nil
 
 }
 
 func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
+	ws_conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Failed to upgrade connection WS: %s", err.Error())
 		return
 	}
+	defer ws_conn.Close()
 
-	defer c.Close()
+	sessionId, err := gonanoid.New()
+	if err != nil {
+		log.Printf("Failed to create id: %s", err.Error())
+	}
+
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+		},
+	}
+	peerConnection, err := webrtc.NewPeerConnection(config)
+	if err != nil {
+		log.Printf("Failed to create peerConnection: %s", err.Error())
+		return
+	}
+
+	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate != nil {
+			msg, err := MarshalWsMessage(WsMessage{
+				Command: CommandIceCandidate,
+				Payload: IceCandidatePayload{
+					Candidate:     candidate.ToJSON().Candidate,
+					SdpMid:        *candidate.ToJSON().SDPMid,
+					SdpMLineIndex: *candidate.ToJSON().SDPMLineIndex,
+				},
+			})
+			if err != nil {
+				log.Printf("Failed to marhsal ICE candidate message: %s", err.Error())
+				return
+			}
+			ws_conn.WriteMessage(websocket.TextMessage, []byte(msg))
+
+		}
+	})
+
+	// need to change this to a media channel probably for video
+	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		log.Printf("New Data Channel %s %d", d.Label(), d.ID())
+		d.OnOpen(func() {
+			log.Printf("channel opened")
+		})
+		d.OnMessage(func(msg webrtc.DataChannelMessage) {
+			log.Printf("Received Message from Data Channel '%s': %s", d.Label(), string(msg.Data))
+		})
+
+		d.OnClose(func() {
+			log.Printf("Data channel '%s'-'%d' closed.", d.Label(), d.ID())
+		})
+
+		d.OnError(func(err error) {
+			log.Printf("Error on data channel '%s': %s", d.Label(), err.Error())
+		})
+	})
 
 	for {
-		_, message, err := c.ReadMessage()
+		_, message, err := ws_conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
 				log.Printf("Error while reading: %s", err.Error())
@@ -300,8 +353,26 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Error marshalling response: %s", err.Error())
 				continue
 			}
-			if err := c.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
+			if err := ws_conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 				log.Printf("Error sending response: %s", err.Error())
+			}
+		case CommandIceCandidate:
+			payload, ok := parsed_message.Payload.(IceCandidatePayload)
+			if !ok {
+				log.Println("Invalid payload for ICE candidate")
+				return
+			}
+
+			candidate := webrtc.ICECandidateInit{
+				Candidate:     payload.Candidate,
+				SDPMid:        &payload.SdpMid,
+				SDPMLineIndex: &payload.SdpMLineIndex,
+			}
+
+			err := peerConnection.AddICECandidate(candidate)
+			if err != nil {
+				log.Printf("Error adding ICE candidate: %s", err.Error())
+				return
 			}
 		case CommandIceOffer:
 			payload, ok := parsed_message.Payload.(IceOfferPayload)
@@ -309,48 +380,18 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println("Invalid payload for ICE offer")
 				return
 			}
-			sessionId, err := gonanoid.New()
-			if err != nil {
-				log.Printf("Failed to create id: %s", err.Error())
-			}
-			pc, err := app.handleIceOffer(payload, c)
+			err := app.handleIceOffer(payload, peerConnection, ws_conn)
 			if err != nil {
 				log.Printf("Failed to handle ICE offer: %s", err.Error())
 				return
 			}
-			app.sessionManager.CreateSession(sessionId, pc)
+			app.sessionManager.CreateSession(sessionId, peerConnection)
 			defer func() {
-				pc.Close()
+				peerConnection.Close()
 				app.sessionManager.DeleteSession(sessionId)
 				log.Printf("Session %s deleted", sessionId)
 			}()
 			log.Printf("successfully created webrtc session: %s", sessionId)
-
-			pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
-				if candidate != nil {
-					msg, err := MarshalWsMessage(WsMessage{
-						Command: CommandIceCandidate,
-						Payload: IceCandidatePayload{
-							Candidate:     candidate.ToJSON().Candidate,
-							SdpMid:        *candidate.ToJSON().SDPMid,
-							SdpMLineIndex: int(*candidate.ToJSON().SDPMLineIndex),
-						},
-					})
-					if err != nil {
-						log.Printf("Failed to marhsal ICE candidate message: %s", err.Error())
-						return
-					}
-					c.WriteMessage(websocket.TextMessage, []byte(msg))
-
-				}
-			})
-
-			// need to change this to a media channel probably for video
-			pc.OnDataChannel(func(d *webrtc.DataChannel) {
-				log.Printf("New Data Channel %s %d", d.Label(), d.ID())
-				// Setup callbacks for channel events like onmessage, onopen, etc.
-			})
-
 		}
 	}
 }
@@ -409,7 +450,7 @@ func (manager *SessionManager) CreateSession(id string, conn *webrtc.PeerConnect
 }
 
 func (manager *SessionManager) GetSession(id string) (*Session, bool) {
-	manager.lock.Lock()
+	manager.lock.RLock()
 	defer manager.lock.RUnlock()
 	session, exists := manager.sessions[id]
 	return session, exists

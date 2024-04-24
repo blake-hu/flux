@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Testing</title>
+    <script>
+      const websocket = new WebSocket("ws://localhost:8080/ws");
+
+      websocket.onopen = e => {
+        console.log("WebSocket connection established.");
+        const message = {
+          command: "ping",
+          payload: { data: "Hello, this is a test message" },
+        };
+        websocket.send(JSON.stringify(message));
+      };
+
+      let remoteDescriptionSet = false;
+      const candidateQueue = [];
+
+      websocket.onmessage = async e => {
+        const message = JSON.parse(e.data);
+        console.log("Received message:", message);
+
+        if (message.command === "IceAnswer") {
+          const remoteDesc = new RTCSessionDescription(message.payload);
+          console.log("Setting remote description...");
+          await peerConnection.setRemoteDescription(remoteDesc);
+          remoteDescriptionSet = true
+          flushCandidateQueue()
+        } else if (message.command === "IceCandidate") {
+          const candidate = new RTCIceCandidate(message.payload);
+          if (remoteDescriptionSet) {
+            await peerConnection.addIceCandidate(candidate);
+          } else {
+            candidateQueue.push(candidate)
+          }
+        }
+      };
+
+      function flushCandidateQueue() {
+        while (candidateQueue.length > 0) {
+          const candidate = candidateQueue.pop()
+          peerConnection.addIceCandidate(candidate)
+        }
+      }
+
+      websocket.onerror = error => {
+        console.error("WebSocket Error:", error);
+      };
+
+      websocket.onclose = event => {
+        console.log("WebSocket Closed:", event.reason);
+      };
+
+      const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+      const peerConnection = new RTCPeerConnection(configuration);
+      const dataChannel = peerConnection.createDataChannel("myDataChannel");
+
+      peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+          console.log("Sending new ICE candidate...");
+          websocket.send(JSON.stringify({
+            command: "IceCandidate",
+            payload: event.candidate.toJSON()
+          }));
+        } else {
+          console.log("ICE gathering complete.");
+        }
+      };
+
+      async function startConnection() {
+        console.log("Starting connection...");
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        sendOffer();  
+      }
+
+      function sendOffer() {
+        const message = {
+          command: "IceOffer",
+          payload: peerConnection.localDescription
+        };
+        websocket.send(JSON.stringify(message));
+        console.log("Offer sent.");
+      }
+
+      peerConnection.onconnectionstatechange = event => {
+        console.log("Connection state change:", peerConnection.connectionState);
+      };
+
+      dataChannel.onopen = () => {
+        console.log("Data channel is open.");
+      };
+
+      dataChannel.onclose = () => {
+        console.log("Data channel is closed.");
+      };
+
+      dataChannel.onerror = error => {
+        console.error("Data channel error:", error);
+      };
+
+      async function sendMessage() {
+        console.log("Sending message via data channel...");
+        dataChannel.send("Hello World");
+      }
+    </script>
+</head>
+<body>
+    <button onclick="startConnection()">Start RTC Connection</button>
+    <button onclick="sendMessage()">Send testing RTC message</button>
+</body>
+</html>
