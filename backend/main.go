@@ -88,77 +88,15 @@ type App struct {
 }
 
 func main() {
-	db, err := sqlx.Connect("postgres", fmt.Sprintf("host=db user=%s dbname=%s password=%s sslmode=disable", db_user, db_name, db_password))
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is not set")
+	}
+	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %s", err.Error())
 	}
 	defer db.Close()
-
-	// m := &webrtc.MediaEngine{}
-	//
-	// if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-	// 	RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8, ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
-	// 	PayloadType:        96,
-	// }, webrtc.RTPCodecTypeVideo); err != nil {
-	// 	log.Fatalf("Failed to register VP8 coded: %s", err.Error())
-	// }
-	//
-	// i := &interceptor.Registry{}
-	//
-	// intervalPliFactory, err := intervalpli.NewReceiverInterceptor()
-	// if err != nil {
-	// 	log.Fatalf("Failed to create NewReceiverInterceptor: %s", err.Error())
-	// }
-	// i.Add(intervalPliFactory)
-	//
-	// if err = webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-	// 	log.Fatalf("Failed to register interceptors: %s", err.Error())
-	// }
-	//
-	// api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
-	//
-	// config := webrtc.Configuration{
-	// 	ICEServers: []webrtc.ICEServer{
-	// 		{
-	// 			URLs: []string{"stun:stun.l.google.com:19302"},
-	// 		},
-	// 	},
-	// }
-	//
-	// peerConnection, err := api.NewPeerConnection(config)
-	// if err != nil {
-	// 	log.Fatalf("Failed to connect to peer: %s", err.Error())
-	// }
-	//
-	// if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
-	// 	log.Fatalf("Failed to add video transceiver: %s", err.Error())
-	// }
-	//
-	// peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-	// 	codec := track.Codec()
-	// 	if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
-	// 		log.Print("Got VP8 track")
-	// 		packet, _, err := track.ReadRTP()
-	// 		if err != nil {
-	// 			log.Printf("failed to packet")
-	// 		}
-	// 		log.Printf("unmarshalled packet: %s", packet.String())
-	// 	}
-	// })
-	//
-	// peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-	// 	log.Printf("Connection state changed %s", connectionState.String())
-	//
-	// 	if connectionState == webrtc.ICEConnectionStateConnected {
-	// 		log.Printf("Connection started")
-	// 	} else if connectionState == webrtc.ICEConnectionStateFailed || connectionState == webrtc.ICEConnectionStateClosed {
-	// 		log.Printf("Connectiion closed")
-	//
-	// 		if closeErr := peerConnection.Close(); closeErr != nil {
-	// 			log.Fatalf("Failed to close peer connection: %s", closeErr.Error())
-	// 		}
-	// 	}
-	// })
 
 	app := &App{db: db, sessionManager: NewSessionManager()}
 	db.MustExec("CREATE EXTENSION IF NOT EXISTS vector;")
@@ -174,8 +112,6 @@ func main() {
 		fmt.Println("Failed to start server")
 		os.Exit(1)
 	}
-
-	fmt.Printf("Sever listening on port %s\n", port)
 }
 
 func MarshalWsMessage(msg WsMessage) (string, error) {
@@ -276,11 +212,17 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	}
-	peerConnection, err := webrtc.NewPeerConnection(config)
+	se := webrtc.SettingEngine{}
+	se.SetEphemeralUDPPortRange(10000, 10100)
+	// when this is deployed it will need to be the public IP address
+	se.SetNAT1To1IPs([]string{"127.0.0.1"}, webrtc.ICECandidateTypeHost)
+	api := webrtc.NewAPI(webrtc.WithSettingEngine(se))
+	peerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("Failed to create peerConnection: %s", err.Error())
 		return
 	}
+	defer peerConnection.Close()
 
 	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate != nil {
@@ -386,11 +328,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			app.sessionManager.CreateSession(sessionId, peerConnection)
-			defer func() {
-				peerConnection.Close()
-				app.sessionManager.DeleteSession(sessionId)
-				log.Printf("Session %s deleted", sessionId)
-			}()
+			defer app.sessionManager.DeleteSession(sessionId)
 			log.Printf("successfully created webrtc session: %s", sessionId)
 		}
 	}

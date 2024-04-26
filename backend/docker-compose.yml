@@ -6,9 +6,10 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgresql://user:password@db:5432/dbname
+      DATABASE_URL: postgresql://user:password@db:5432/mydb?sslmode=disable
     ports:
       - "8080:8080"
+      - "10000-10100:10000-10100/udp"
 
   db:
     image: pgvector/pgvector:pg16
