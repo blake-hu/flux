@@ -9,8 +9,6 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.5.1 // indirect
-	github.com/matoous/go-nanoid/v2 v2.0.0 // indirect
 	github.com/pion/datachannel v1.5.6 // indirect
 	github.com/pion/dtls/v2 v2.2.10 // indirect
 	github.com/pion/ice/v3 v3.0.6 // indirect
@@ -28,11 +26,13 @@ require (
 	github.com/pion/transport/v3 v3.0.2 // indirect
 	github.com/pion/turn/v3 v3.0.2 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 )
 
 require (
+	github.com/gorilla/websocket v1.5.1
+	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/pgvector/pgvector-go v0.1.1
 	github.com/pion/webrtc/v4 v4.0.0-beta.17
 )
