@@ -10,7 +10,6 @@ import Peer from 'simple-peer';
 
 
 
-
 const socket = io("endpoint")
 
 export default function SecondFactor({back}) {
@@ -54,15 +53,19 @@ export default function SecondFactor({back}) {
     const [stripCol, setstripCol] = useState("") 
     const [stripPos, setstripPos] = useState("")
 
-    const [colorList, setColorsList] = useState();
-    const [poslist, position] = useState()
+    // const [colorList, setColorsList] = useState();
+    // const [poslist, position] = useState()
    
 
-    useEffect(()=>{
-        socket.on("disconnect", () => {
-			connectionRef.current.destroy()
-		})
-    })
+    // useEffect(()=>{
+    //     socket.on("disconnect", () => {
+	// 		connectionRef.current.destroy()
+	// 	})
+    // })
+
+
+    const colorList = ["#FF0000", "#0000FF", "#00FF00"];
+    const poslist = ["10%", "20%", "30%", "40%"]
     useEffect(()=>{
         let colorNum = 0;
         let colorNum2=1;
@@ -103,11 +106,11 @@ export default function SecondFactor({back}) {
                 </div>
             </div>
             <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
-            {capturing ? (
+            {/* {capturing ? (
                 <button onClick={handleStopCaptureClick}>Stop Capture</button>
             ) : (
                 <button onClick={handleSendStream}>Start Capture</button>
-            )}
+            )} */}
             
             
         </>
