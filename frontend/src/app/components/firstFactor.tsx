@@ -19,7 +19,7 @@ export default function FirstFactor({next}) {
             onSubmit={handleSubmit}
           >
           <h1 className='signIn'>Sign In</h1>
-          <h2 className='with'>with <b>FaceAuth</b></h2>
+          <h2 className='with'>with <b>Flux</b></h2>
           <div className="TextField">
             <TextField className='textfield' required id="uid" label="Email" variant="outlined" />
           </div>

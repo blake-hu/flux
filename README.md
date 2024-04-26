@@ -1,7 +1,8 @@
-# FaceAuth Monorepo
+# Flux Monorepo
 
 ## Monorepo Structure
-1. ML
+1. ML (Facial Recognition)
+2. Liveness (Liveness Detection)
 2. Frontend
 3. Backend
 
