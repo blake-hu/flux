@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"sync"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/pgvector/pgvector-go"
@@ -32,43 +30,6 @@ type Person struct {
 	LastName  string          `db:"last_name"`
 	Email     string          `db:"email"`
 	Embedding pgvector.Vector `db:"embedding"`
-}
-
-type Command string
-
-const (
-	CommandPing         Command = "ping"
-	CommandPong         Command = "pong"
-	CommandIceOffer     Command = "IceOffer"
-	CommandIceAnswer    Command = "IceAnswer"
-	CommandIceCandidate Command = "IceCandidate"
-)
-
-type PingPayload struct {
-	Data string `json:"data"`
-}
-
-type PongPayload struct {
-	Data string `json:"data"`
-}
-
-type IceOfferPayload struct {
-	Sdp  string `json:"sdp"`
-	Type string `json:"type"`
-}
-
-type IceAnswerPayload = IceOfferPayload
-
-type IceCandidatePayload struct {
-	Candidate        string `json:"candidate"`
-	SdpMid           string `json:"sdpMid"`
-	SdpMLineIndex    uint16 `json:"sdpMLineIndex"`
-	UsernameFragment string `json:"usernameFragment,omitempty"`
-}
-
-type WsMessage struct {
-	Command Command     `json:"command"`
-	Payload interface{} `json:"payload"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -109,54 +70,6 @@ func main() {
 		fmt.Println("Failed to start server")
 		os.Exit(1)
 	}
-}
-
-func MarshalWsMessage(msg WsMessage) (string, error) {
-	marshaled, err := json.Marshal(msg)
-	if err != nil {
-		return "", err
-	}
-	return string(marshaled), nil
-}
-
-func UnmarshalWsMessage(data string) (WsMessage, error) {
-	var msg WsMessage
-	var rawPayload json.RawMessage
-
-	tempMsg := struct {
-		Command Command          `json:"command"`
-		Payload *json.RawMessage `json:"payload"`
-	}{Payload: &rawPayload}
-
-	err := json.Unmarshal([]byte(data), &tempMsg)
-	if err != nil {
-		return WsMessage{}, err
-	}
-	msg.Command = tempMsg.Command
-
-	switch msg.Command {
-	case CommandPing:
-		var payload PingPayload
-		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
-			return msg, err
-		}
-		msg.Payload = payload
-	case CommandIceOffer:
-		var payload IceOfferPayload
-		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
-			return msg, err
-		}
-		msg.Payload = payload
-	case CommandIceCandidate:
-		var payload IceCandidatePayload
-		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
-			return msg, err
-		}
-		msg.Payload = payload
-	default:
-		return WsMessage{}, fmt.Errorf("Unsupported command type: %s", msg.Command)
-	}
-	return msg, nil
 }
 
 func (app *App) handleIceOffer(payload IceOfferPayload, peerConnection *webrtc.PeerConnection, conn *websocket.Conn) error {
@@ -339,46 +252,3 @@ func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 //			     --- python
 // go server <-> |
 //		         --- python
-
-type Session struct {
-	ID             string
-	PeerConnection *webrtc.PeerConnection
-}
-
-type SessionManager struct {
-	sessions map[string]*Session
-	lock     sync.RWMutex
-}
-
-func NewSessionManager() *SessionManager {
-	return &SessionManager{
-		sessions: make(map[string]*Session),
-	}
-}
-
-func (manager *SessionManager) CreateSession(id string, conn *webrtc.PeerConnection) *Session {
-	manager.lock.Lock()
-	defer manager.lock.Unlock()
-	session := &Session{
-		ID:             id,
-		PeerConnection: conn,
-	}
-	manager.sessions[id] = session
-	return session
-}
-
-func (manager *SessionManager) GetSession(id string) (*Session, bool) {
-	manager.lock.RLock()
-	defer manager.lock.RUnlock()
-	session, exists := manager.sessions[id]
-	return session, exists
-}
-
-func (manager *SessionManager) DeleteSession(id string) {
-	manager.lock.Lock()
-	defer manager.lock.Unlock()
-	if session, exists := manager.sessions[id]; exists {
-		session.PeerConnection.Close()
-		delete(manager.sessions, id)
-	}
-}

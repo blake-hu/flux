@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"sync"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
@@ -48,4 +49,47 @@ func CreateWebRtcConnection() (*webrtc.PeerConnection, error) {
 	}
 
 	return peerConnection, nil
+}
+
+type Session struct {
+	ID             string
+	PeerConnection *webrtc.PeerConnection
+}
+
+type SessionManager struct {
+	sessions map[string]*Session
+	lock     sync.RWMutex
+}
+
+func NewSessionManager() *SessionManager {
+	return &SessionManager{
+		sessions: make(map[string]*Session),
+	}
+}
+
+func (manager *SessionManager) CreateSession(id string, conn *webrtc.PeerConnection) *Session {
+	manager.lock.Lock()
+	defer manager.lock.Unlock()
+	session := &Session{
+		ID:             id,
+		PeerConnection: conn,
+	}
+	manager.sessions[id] = session
+	return session
+}
+
+func (manager *SessionManager) GetSession(id string) (*Session, bool) {
+	manager.lock.RLock()
+	defer manager.lock.RUnlock()
+	session, exists := manager.sessions[id]
+	return session, exists
+}
+
+func (manager *SessionManager) DeleteSession(id string) {
+	manager.lock.Lock()
+	defer manager.lock.Unlock()
+	if session, exists := manager.sessions[id]; exists {
+		session.PeerConnection.Close()
+		delete(manager.sessions, id)
+	}
 }
