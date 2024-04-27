@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -15,7 +14,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
-	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
 
 	"github.com/gorilla/websocket"
@@ -79,9 +77,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-const db_user = "user"
-const db_password = "password"
-const db_name = "mydb"
 const port = "8080"
 
 type App struct {
@@ -195,63 +190,23 @@ func (app *App) handleIceOffer(payload IceOfferPayload, peerConnection *webrtc.P
 }
 
 func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
-	ws_conn, err := upgrader.Upgrade(w, r, nil)
+	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Failed to upgrade connection WS: %s", err.Error())
 		return
 	}
-	defer ws_conn.Close()
+	defer ws.Close()
 
 	sessionId, err := gonanoid.New()
 	if err != nil {
 		log.Printf("Failed to create id: %s", err.Error())
 	}
 
-	config := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: []string{"stun:stun.l.google.com:19302"},
-			},
-		},
-	}
-	se := webrtc.SettingEngine{}
-	se.SetEphemeralUDPPortRange(10000, 10100)
-	m := &webrtc.MediaEngine{}
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8, ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
-		PayloadType:        96,
-	}, webrtc.RTPCodecTypeVideo); err != nil {
-		log.Printf("Failed to register video codec")
-		return
-	}
-
-	i := &interceptor.Registry{}
-
-	if err = webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-		log.Printf("Failed to register default interceptors: %s", err.Error())
-		return
-	}
-	// when this is deployed it will need to be the public IP address
-	se.SetNAT1To1IPs([]string{"127.0.0.1"}, webrtc.ICECandidateTypeHost)
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithSettingEngine(se), webrtc.WithInterceptorRegistry(i))
-	peerConnection, err := api.NewPeerConnection(config)
+	peerConnection, err := CreateWebRtcConnection()
 	if err != nil {
-		log.Printf("Failed to create peerConnection: %s", err.Error())
-		return
+		log.Printf("Failed to create peer connection: %s", err.Error())
 	}
 	defer peerConnection.Close()
-
-	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
-		log.Printf("Failed to add video transceiver: %s", err.Error())
-		return
-	}
-
-	peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		codec := track.Codec()
-		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
-			log.Println("Got video track")
-		}
-	})
 
 	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate != nil {
@@ -267,28 +222,9 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Failed to marhsal ICE candidate message: %s", err.Error())
 				return
 			}
-			ws_conn.WriteMessage(websocket.TextMessage, []byte(msg))
+			ws.WriteMessage(websocket.TextMessage, []byte(msg))
 
 		}
-	})
-
-	// need to change this to a media channel probably for video
-	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
-		log.Printf("New Data Channel %s %d", d.Label(), d.ID())
-		d.OnOpen(func() {
-			log.Printf("channel opened")
-		})
-		d.OnMessage(func(msg webrtc.DataChannelMessage) {
-			log.Printf("Received Message from Data Channel '%s': %s", d.Label(), string(msg.Data))
-		})
-
-		d.OnClose(func() {
-			log.Printf("Data channel '%s'-'%d' closed.", d.Label(), d.ID())
-		})
-
-		d.OnError(func(err error) {
-			log.Printf("Error on data channel '%s': %s", d.Label(), err.Error())
-		})
 	})
 
 	peerConnection.OnTrack(func(track *webrtc.TrackRemote, recv *webrtc.RTPReceiver) {
@@ -297,6 +233,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			rtpPacket, _, err := track.ReadRTP()
 			if err != nil {
 				log.Printf("Failed to read from from video stream")
+				break
 			}
 
 			log.Printf("packet: %v", rtpPacket)
@@ -304,7 +241,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	for {
-		_, message, err := ws_conn.ReadMessage()
+		_, message, err := ws.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
 				log.Printf("Error while reading: %s", err.Error())
@@ -314,6 +251,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		parsed_message, err := UnmarshalWsMessage(string(message))
 		if err != nil {
 			log.Printf("Error unmarshalling message: %s, got error: %s", message, err.Error())
+			return
 		}
 
 		switch parsed_message.Command {
@@ -330,14 +268,15 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				Payload: PongPayload{
 					Data: payload.Data,
 				},
-			},
-			)
+			})
+
 			if err != nil {
 				log.Printf("Error marshalling response: %s", err.Error())
-				continue
+				return
 			}
-			if err := ws_conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
+			if err := ws.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 				log.Printf("Error sending response: %s", err.Error())
+				return
 			}
 		case CommandIceCandidate:
 			payload, ok := parsed_message.Payload.(IceCandidatePayload)
@@ -363,7 +302,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println("Invalid payload for ICE offer")
 				return
 			}
-			err := app.handleIceOffer(payload, peerConnection, ws_conn)
+			err := app.handleIceOffer(payload, peerConnection, ws)
 			if err != nil {
 				log.Printf("Failed to handle ICE offer: %s", err.Error())
 				return
