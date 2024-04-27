@@ -104,10 +104,36 @@
         console.log("Sending message via data channel...");
         dataChannel.send("Hello World");
       }
+
+
+      // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
+
+      async function initialize(e) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {width: 1280, height: 720}
+        });
+        attachVideoStream(stream)
+      }
+
+      function attachVideoStream(stream) {
+        const videoElement = document.querySelector("video")
+        window.stream = stream
+        videoElement.srcObject = stream;
+
+        peerConnection.addTrack(stream.getVideoTracks()[0], stream)
+
+      }
+
     </script>
 </head>
 <body>
-    <button onclick="startConnection()">Start RTC Connection</button>
-    <button onclick="sendMessage()">Send testing RTC message</button>
+  <button onclick="startConnection()">Start RTC Connection</button>
+  <button onclick="sendMessage()">Send testing RTC message</button>
+  <video id="gum-local" autoplay playsinline></video>
+
+  <button id="showVideo" onclick="initialize()">
+    Open camera
+  </button>
 </body>
 </html>
