@@ -1,8 +1,9 @@
 services:
+  
   server:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./go-backend/Dockerfile
     depends_on:
       - db
     environment:
@@ -10,6 +11,8 @@ services:
     ports:
       - "8080:8080"
       - "10000-10100:10000-10100/udp"
+    volumes:
+      - backend:/usr/go-backend
 
   db:
     image: pgvector/pgvector:pg16
@@ -22,5 +25,19 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  inference-backend:
+    image: inference-backend:latest
+    build:
+      context: .
+      dockerfile: ./inference-backend/Dockerfile
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    volumes:
+      - backend:/usr/inference-backend
+
 volumes:
+  backend:
   pgdata:

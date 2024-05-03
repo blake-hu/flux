@@ -1,12 +1,8 @@
 FROM golang:1.22.1
 
-WORKDIR /app
-
-copy . .
+COPY ./go-backend .
 RUN go mod download
 
 RUN go build -o server
 
-cmd ["./server"]
-
-
+CMD ["./server"]

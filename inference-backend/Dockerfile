@@ -9,12 +9,10 @@ RUN apt-get update && \
     libxrender1 \
     libxext6
 
-WORKDIR /app
-
-COPY requirements.txt requirements.txt
+COPY ./inference-backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./inference-backend/app .
 
 EXPOSE 5000
 

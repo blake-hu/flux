@@ -8,6 +8,7 @@ import base64
 app = Flask(__name__)
 vgg_model = DeepFace.build_model('VGG-Face')
 
+
 @app.route('/generate_embedding', methods=['POST'])
 def generate_embedding():
 
@@ -19,7 +20,8 @@ def generate_embedding():
     try:
         img = Image.open(image_file)
         img_array = np.array(img).astype(int)
-        embedding_objs = DeepFace.represent(img_path=img_array, model_name='VGG-Face', enforce_detection=False)
+        embedding_objs = DeepFace.represent(
+            img_path=img_array, model_name='VGG-Face', enforce_detection=False)
         embedding = embedding_objs[0]["embedding"]
 
     except Exception as e:
@@ -30,7 +32,7 @@ def generate_embedding():
 
     # Encode the JSON string using Base64
     encoded_embedding = base64.b64encode(embedding_json.encode('utf-8'))
-    
+
     return jsonify({'encoded_embedding': encoded_embedding.decode('utf-8')})
 
 
