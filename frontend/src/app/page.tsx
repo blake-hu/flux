@@ -41,9 +41,9 @@ export default function Home() {
   const [validEmail, setValidEmail] = useState(false);
   const [validPwd, setValidPwd] = useState(false);
 
-
-
   const [firstSuccess, setFirstSuccess] = useState(false);
+
+  
 
   useEffect(()=>{
     const result = EMAIL_REGEX.test(email);
