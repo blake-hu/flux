@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState,useCallback} from 'react';
+import { setTimeout } from "timers/promises";
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Webcam from "react-webcam";
@@ -131,10 +132,14 @@ export default function SecondFactor({back}) {
       payload: { data: "Ready" },
     };
     websocket.send(JSON.stringify(message));
+
+    readyTimeout()
   }
 
-  function displayBatch(data){
-    
+  async function readyTimeout(){
+    await setTimeout(10000);
+    peerConnection.close()
+
   }
 
   
@@ -179,9 +184,9 @@ export default function SecondFactor({back}) {
     return (
         <>  
 
-            {/* {instructions &&
-                <div className="modal-overlay">
-                  <div className="modal">
+            {instructions &&
+                
+                  <div style={{backgroundColor:"white", display:''}}>
                     <h1>
                       Instructions for Facial Authentication
                     </h1>
@@ -198,8 +203,7 @@ export default function SecondFactor({back}) {
                     </ul>
                   <button onClick={closeInstruction}>I'm Ready</button>
                 </div>
-              </div>
-            } */}
+            }
             
 
             <video id="gum-local" playsInline autoPlay ref={camVideo} style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
@@ -210,7 +214,7 @@ export default function SecondFactor({back}) {
             </div>
             <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
 
-            <button style={{backgroundColor:"red"}}onClick={closeInstruction}>I'm Ready</button>
+           
             
         </>
     );
