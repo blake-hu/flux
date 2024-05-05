@@ -1,3 +1,0 @@
-Directory for liveness detection code
-
-This is a placeholder text file so the directory appears on Git, delete once you add files
