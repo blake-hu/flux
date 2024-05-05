@@ -5,16 +5,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/gorilla/websocket"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
 	"github.com/pion/webrtc/v4"
-
-	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v4/pkg/media"
+	"github.com/pion/webrtc/v4/pkg/media/h264writer"
 )
 
 var schema = `
@@ -140,16 +142,17 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
-	peerConnection.OnTrack(func(track *webrtc.TrackRemote, recv *webrtc.RTPReceiver) {
-		log.Printf("New Track %s %s", track.Kind().String(), track.ID())
-		for {
-			rtpPacket, _, err := track.ReadRTP()
-			if err != nil {
-				log.Printf("Failed to read from from video stream")
-				break
-			}
+	h264File, err := h264writer.New("/video/output.mp4")
+	if err != nil {
+		panic(err)
+	}
 
-			log.Printf("packet: %v", rtpPacket)
+	peerConnection.OnTrack(func(track *webrtc.TrackRemote, recv *webrtc.RTPReceiver) {
+		codec := track.Codec()
+		log.Printf("New Track %s %s", track.Kind().String(), track.ID())
+		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
+			fmt.Println("Got VP8 track, saving to disk as output.ivf")
+			saveToDisk(h264File, track)
 		}
 	})
 
@@ -224,6 +227,28 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			defer app.sessionManager.DeleteSession(sessionId)
 			log.Printf("successfully created webrtc session: %s", sessionId)
 		}
+	}
+}
+
+func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
+	defer func() {
+		if err := i.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	for {
+		rtpPacket, _, err := track.ReadRTP()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if err := i.WriteRTP(rtpPacket); err != nil {
+			fmt.Println(err)
+			return
+		}
+
 	}
 }
 
