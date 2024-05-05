@@ -149,24 +149,24 @@ export default function SecondFactor({back}) {
   const [nextData, setNextData] = useState()
 
 
-  useEffect(()=>{
-    if(displayData === null){
-      return
-    }
-    let size = displayData.length;
-    let current = 0
-    const interval = setInterval(() => {
-      if (current=== size) { 
-        return () => clearInterval(interval);
-      }
+  // useEffect(()=>{
+  //   if(displayData === null){
+  //     return
+  //   }
+  //   let size = displayData.length;
+  //   let current = 0
+  //   const interval = setInterval(() => {
+  //     if (current=== size) { 
+  //       return () => clearInterval(interval);
+  //     }
 
-      const newColor = colors[Math.floor(Math.random() * colors.length)]; // Choose a random color
+  //     const newColor = colors[Math.floor(Math.random() * colors.length)]; // Choose a random color
       
-    }, 20); // Change color every 5 seconds
+  //   }, 20); // Change color every 5 seconds
 
-    return () => clearInterval(interval);
+  //   return () => clearInterval(interval);
 
-  }, [displayData])
+  // }, [displayData])
 
   async function confirmColorChange() {
     console.log("Sending message via data channel...");
@@ -200,7 +200,7 @@ export default function SecondFactor({back}) {
                 </div>
               </div>
             } */}
-            <button onClick={closeInstruction}>I'm Ready</button>
+            
 
             <video id="gum-local" playsInline autoPlay ref={camVideo} style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
             <div style={{backgroundColor:backgroundCol, width:'100vw', height:'100vw', opacity:'70%'}}>
@@ -209,6 +209,8 @@ export default function SecondFactor({back}) {
                 </div>
             </div>
             <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
+
+            <button onClick={closeInstruction}>I'm Ready</button>
             
         </>
     );
