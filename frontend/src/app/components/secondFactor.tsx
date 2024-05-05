@@ -179,7 +179,7 @@ export default function SecondFactor({back}) {
     return (
         <>  
 
-            {instructions &&
+            {/* {instructions &&
                 <div className="modal-overlay">
                   <div className="modal">
                     <h1>
@@ -199,7 +199,8 @@ export default function SecondFactor({back}) {
                   <button onClick={closeInstruction}>I'm Ready</button>
                 </div>
               </div>
-            }
+            } */}
+            <button onClick={closeInstruction}>I'm Ready</button>
 
             <video id="gum-local" playsInline autoPlay ref={camVideo} style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
             <div style={{backgroundColor:backgroundCol, width:'100vw', height:'100vw', opacity:'70%'}}>
