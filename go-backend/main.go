@@ -48,6 +48,7 @@ type App struct {
 }
 
 func main() {
+	fmt.Print("Starting go backend version 1.2\n")
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		log.Fatal("DATABASE_URL is not set")
@@ -142,7 +143,9 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
-	h264File, err := h264writer.New("/video/output.mp4")
+	folderPath := "./files/video"
+	os.MkdirAll(folderPath, os.ModePerm)
+	h264File, err := h264writer.New(folderPath + "/output.mp4")
 	if err != nil {
 		panic(err)
 	}
@@ -151,7 +154,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		codec := track.Codec()
 		log.Printf("New Track %s %s", track.Kind().String(), track.ID())
 		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
-			fmt.Println("Got VP8 track, saving to disk as output.ivf")
+			fmt.Println("Got VP8 track, saving to disk as output.mp4")
 			saveToDisk(h264File, track)
 		}
 	})
