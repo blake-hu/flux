@@ -1,5 +1,4 @@
 import {useEffect, useRef, useState,useCallback} from 'react';
-import { setTimeout } from "timers/promises";
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Webcam from "react-webcam";
@@ -8,6 +7,7 @@ import io from 'socket.io-client'
 import { abort } from 'process';
 import Peer from 'simple-peer';
 import { start } from 'repl';
+import "./style.css"
 
 
 
@@ -137,10 +137,15 @@ export default function SecondFactor({back}) {
   }
 
   async function readyTimeout(){
-    await setTimeout(10000);
+    await sleep(10000)
     peerConnection.close()
+    console.log("connection Closed")
 
   }
+
+  async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
   
 
@@ -182,29 +187,7 @@ export default function SecondFactor({back}) {
   }
   
     return (
-        <>  
-
-            {instructions &&
-                
-                  <div style={{backgroundColor:"white", display:''}}>
-                    <h1>
-                      Instructions for Facial Authentication
-                    </h1>
-                    <ul>
-                      <li>
-                        Ensure your face is brightly lit
-                      </li>
-                      <li>
-                        Position your face according to the outline
-                      </li>
-                      <li>
-                        Hold Still until flashing is complete
-                      </li>
-                    </ul>
-                  <button onClick={closeInstruction}>I'm Ready</button>
-                </div>
-            }
-            
+        <>            
 
             <video id="gum-local" playsInline autoPlay ref={camVideo} style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
             <div style={{backgroundColor:backgroundCol, width:'100vw', height:'100vw', opacity:'70%'}}>
@@ -214,7 +197,25 @@ export default function SecondFactor({back}) {
             </div>
             <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
 
-           
+            {instructions &&
+                <div className='instructionPopup'>
+                  <h1>
+                    Instructions for Facial Authentication
+                  </h1>
+                  <ul>
+                    <li>
+                      Ensure your face is brightly lit
+                    </li>
+                    <li>
+                      Position your face according to the outline
+                    </li>
+                    <li>
+                      Hold Still until flashing is complete
+                    </li>
+                  </ul>
+                <button onClick={closeInstruction}>I'm Ready</button>
+              </div>
+          }
             
         </>
     );
