@@ -1,25 +1,5 @@
 from . import *
 from calculate import verify_eqn2, roi
-def criteria(frames):
-    t_begin, u, rows, t_frame, cols, ct_k, ct_frame, fps, color1, color2, E = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-
-    dVals = []
-    for frame in frames:
-        y_hat_i = roi(frames, t_begin, u, rows, t_frame, cols, ct_k, ct_frame, fps, color1, color2, E)
-
-        # calc criteria
-        d = 0.25  # % of screen the band is shown on
-        imgRows = frame.shape[0]
-
-        d_i = y_hat_i - (u + u + imgRows * 0.25) / 2
-        dVals.append(d_i)
-
-    mean = np.mean(dVals)
-    var = np.var(dVals)
-
-    threshold = -5
-    return mean * np.sqrt(var) < np.exp(threshold)
-
 
 # training linear regression models to be used to identify location of band of color
 def get_average_vector(roi):
@@ -48,9 +28,37 @@ def lr_predict(lr, rois, targets):
 
     return predictions, score
 
+def find_closest_filename(folder_path, target):
+    closest_filename = None
+    closest_distance = float('inf')  # Initialize with a large number
+    best_ctk = 0
+
+    # Iterate over each file in the directory
+    for filename in os.listdir(folder_path):
+        if filename.startswith('frame_') and filename.endswith('.jpg'):
+            # Extract the number from the filename
+            number_part = filename.replace('frame_', '').replace('.jpg', '')
+            try:
+                number = int(number_part)
+                if number <= target: # tu - ctk >= 30
+                # if target - number < 24:
+                    # Calculate the absolute difference from the target
+                    distance = abs(number - target)
+
+                    # Update the closest filename if this file is closer
+                    if distance < closest_distance:
+                        closest_distance = distance
+                        closest_filename = filename
+                        best_ctk = number
+            except ValueError:
+                # Handle the case where conversion to int fails
+                continue
+
+    return closest_filename, best_ctk
 
 def predict_liveliness(datafile, frames, color_changes, lr_model):
     dVals = []
+    #load in model weights 
 
     for i in range(len(datafile)):  # for each color change
         color1, color2 = color_changes.iloc[i, 0], color_changes.iloc[i, 1]
@@ -94,31 +102,3 @@ def predict_liveliness(datafile, frames, color_changes, lr_model):
     threshold = -5
 
     return mean * np.sqrt(var) < np.exp(threshold)
-
-def find_closest_filename(folder_path, target):
-    closest_filename = None
-    closest_distance = float('inf')  # Initialize with a large number
-    best_ctk = 0
-
-    # Iterate over each file in the directory
-    for filename in os.listdir(folder_path):
-        if filename.startswith('frame_') and filename.endswith('.jpg'):
-            # Extract the number from the filename
-            number_part = filename.replace('frame_', '').replace('.jpg', '')
-            try:
-                number = int(number_part)
-                if number <= target: # tu - ctk >= 30
-                # if target - number < 24:
-                    # Calculate the absolute difference from the target
-                    distance = abs(number - target)
-
-                    # Update the closest filename if this file is closer
-                    if distance < closest_distance:
-                        closest_distance = distance
-                        closest_filename = filename
-                        best_ctk = number
-            except ValueError:
-                # Handle the case where conversion to int fails
-                continue
-
-    return closest_filename, best_ctk
