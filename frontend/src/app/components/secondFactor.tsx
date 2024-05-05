@@ -210,7 +210,7 @@ export default function SecondFactor({back}) {
             </div>
             <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
 
-            <button onClick={closeInstruction}>I'm Ready</button>
+            <button style={{backgroundColor:"red"}}onClick={closeInstruction}>I'm Ready</button>
             
         </>
     );
