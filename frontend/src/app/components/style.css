@@ -114,6 +114,58 @@
 }
 
 .instructionPopup{
-    
+    border-radius: 22px;
+    border: 1px solid #000;
+    background: #FFF;
+    position: absolute;
+    top:10%;
+    left:10%;
+    width:80%;
+    height: 70%;
+    text-align: center;
+    min-width: min-content;
+    min-height: min-content;
 }
 
+.instructions{
+    padding-top: 5%;
+}
+
+ul{
+    color: #000;
+    font-family: Inter;
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    text-align: left;
+    padding-left: 10%;
+    margin-bottom: 5%;
+
+}
+li{
+    padding:2% 2% 2% 2%;
+    margin-left: 7%;
+    list-style: circle;
+}
+.instructionHead{
+    color: #000;
+    font-family: Inter;
+    font-size: 30px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    text-align: center;
+    padding-bottom: 5%;
+
+}
+
+.instructionButton{
+    background-color: #000000;
+    color:white;
+    
+
+}
+.instructionButton:hover{
+    background-color: gray;
+}

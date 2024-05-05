@@ -1,12 +1,5 @@
 import {useEffect, useRef, useState,useCallback} from 'react';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import Webcam from "react-webcam";
-import { Button } from '@mui/material';
-import io from 'socket.io-client'
-import { abort } from 'process';
-import Peer from 'simple-peer';
-import { start } from 'repl';
+import Button from '@mui/material/Button';
 import "./style.css"
 
 
@@ -199,7 +192,8 @@ export default function SecondFactor({back}) {
 
             {instructions &&
                 <div className='instructionPopup'>
-                  <h1>
+                  <div className='instructions'>
+                  <h1 className='instructionHead'>
                     Instructions for Facial Authentication
                   </h1>
                   <ul>
@@ -213,7 +207,8 @@ export default function SecondFactor({back}) {
                       Hold Still until flashing is complete
                     </li>
                   </ul>
-                <button onClick={closeInstruction}>I'm Ready</button>
+                <Button className='instructionButton' onClick={closeInstruction}>I'm Ready</Button>
+                  </div>
               </div>
           }
             
