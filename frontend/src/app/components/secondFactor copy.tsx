@@ -6,13 +6,12 @@ import { Button } from '@mui/material';
 import io from 'socket.io-client'
 import { abort } from 'process';
 import Peer from 'simple-peer';
-import { start } from 'repl';
 
 
 
 export default function SecondFactor({back}) {
-  
   const websocket = new WebSocket("ws://localhost:8080/ws");
+
   websocket.onopen = e => {
     console.log("WebSocket connection established.");
     const message = {
@@ -20,11 +19,8 @@ export default function SecondFactor({back}) {
       payload: { data: "Hello, this is a test message" },
     };
     websocket.send(JSON.stringify(message));
-
-    startConnection()
   };
 
-  
   let remoteDescriptionSet = false;
   const candidateQueue = [];
 
@@ -45,13 +41,13 @@ export default function SecondFactor({back}) {
       } else {
         candidateQueue.push(candidate)
       }
-    } else if(message.command === "setBandColor"){
-      
-      setBandCol(message.payload.stripColor)
-      setBandPos(message.payload.stripPosition)
-      setBackgroundCol(message.payload.backgroundColor)
-      confirmColorChange()
-    } 
+    } else if(message.command === "ChangeBackgroundColor"){
+      setBackgroundCol(message.payload)
+    } else if(message.command === "ChangeBandColor"){
+      setBandCol(message.payload)
+    } else if(message.command === "ChangeBandPosition"){
+      setBandPos(message.payload)
+    }
   };
 
   function flushCandidateQueue() {
@@ -71,8 +67,6 @@ export default function SecondFactor({back}) {
 
   const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
   const peerConnection = new RTCPeerConnection(configuration);
-  initialize();
-  const dataChannel = peerConnection.createDataChannel("myDataChannel");
 
   peerConnection.onicecandidate = event => {
     if (event.candidate) {
@@ -108,7 +102,7 @@ export default function SecondFactor({back}) {
 
   // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
 
-  async function initialize() {
+  async function initialize(e) {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {width: 1280, height: 720}
@@ -119,96 +113,27 @@ export default function SecondFactor({back}) {
   function attachVideoStream(stream) {
     const videoElement = document.querySelector("video")
     window.stream = stream
-    camVideo.current.srcObject = stream;
+    videoElement.srcObject = stream;
     peerConnection.addTrack(stream.getVideoTracks()[0], stream)
   }
-
-  function closeInstruction(e){
-    setInstructions(false)
-
-    const message = {
-      command: "readyForBandColor",
-      payload: { data: "Ready" },
-    };
-    websocket.send(JSON.stringify(message));
-  }
-
-  function displayBatch(data){
-    
-  }
-
-  
-
 
   const [backgroundCol, setBackgroundCol] = useState()
   const [bandCol,setBandCol] = useState()
   const [bandPos, setBandPos] = useState()
-  const [instructions, setInstructions] = useState(true)
-  const [displayData, setDisplayData] = useState(null)
-  const camVideo = useRef()
-  const [nextData, setNextData] = useState()
 
 
-  useEffect(()=>{
-    if(displayData === null){
-      return
-    }
-    let size = displayData.length;
-    let current = 0
-    const interval = setInterval(() => {
-      if (current=== size) { 
-        return () => clearInterval(interval);
-      }
+  useEffect(()=>)
 
-      const newColor = colors[Math.floor(Math.random() * colors.length)]; // Choose a random color
-      
-    }, 20); // Change color every 5 seconds
-
-    return () => clearInterval(interval);
-
-  }, [displayData])
-
-  async function confirmColorChange() {
-    console.log("Sending message via data channel...");
-    const message = {
-      timestamp: Date.now()
-    }
-    dataChannel.send(JSON.stringify(message));
-  }
-  
     return (
         <>  
-
-            {instructions &&
-                <div className="modal-overlay">
-                  <div className="modal">
-                    <h1>
-                      Instructions for Facial Authentication
-                    </h1>
-                    <ul>
-                      <li>
-                        Ensure your face is brightly lit
-                      </li>
-                      <li>
-                        Position your face according to the outline
-                      </li>
-                      <li>
-                        Hold Still until flashing is complete
-                      </li>
-                    </ul>
-                  <button onClick={closeInstruction}>I'm Ready</button>
-                </div>
-              </div>
-            }
-
-            <video id="gum-local" playsInline autoPlay ref={camVideo} style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
+            <video id="gum-local" playsInline autoPlay style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
             <div style={{backgroundColor:backgroundCol, width:'100vw', height:'100vw', opacity:'70%'}}>
                 <div style={{backgroundColor:bandCol, width:'100vw', height:'20%',position:'absolute',top:bandPos}}>
                 
                 </div>
             </div>
             <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
-            
+            <button onClick={startConnection}>Start Connection</button>
         </>
     );
   };
