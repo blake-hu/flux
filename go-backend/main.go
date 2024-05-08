@@ -329,11 +329,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
-	defer func() {
-		if err := i.Close(); err != nil {
-			panic(err)
-		}
-	}()
+	defer i.Close()
 
 	for {
 		rtpPacket, _, err := track.ReadRTP()
