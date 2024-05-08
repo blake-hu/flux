@@ -3,23 +3,34 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type Command string
 
 const (
-	CommandPing         Command = "ping"
-	CommandPong         Command = "pong"
-	CommandIceOffer     Command = "IceOffer"
-	CommandIceAnswer    Command = "IceAnswer"
-	CommandIceCandidate Command = "IceCandidate"
-	CommandSetBand      Command = "setBand"
+	CommandPing              Command = "ping"
+	CommandPong              Command = "pong"
+	CommandIceOffer          Command = "IceOffer"
+	CommandIceAnswer         Command = "IceAnswer"
+	CommandIceCandidate      Command = "IceCandidate"
+	CommandSetBandColor      Command = "setBandColor"
+	CommandReadyForBandColor Command = "readyForBandColor"
+	ColorCommandAck          Command = "colorCommandAck"
 )
 
-type SetBandPayload struct {
-	Color    string `json:"color"`
-	Position uint16 `json:"position"`
-	Duration uint16 `json:"duration"`
+type ColorCommandAckPayload struct {
+	BackgroundColor string    `json:"backgroundColor"`
+	StripColor      string    `json:"stripColor"`
+	StripPosition   string    `json:"stripPosition"`
+	Timestamp       time.Time `json:"timestamp"`
+	Index           int       `json:"index"`
+}
+
+type SetBandColorPayload struct {
+	BackgroundColor string `json:"backgroundColor"`
+	StripColor      string `json:"stripColor"`
+	StripPosition   uint16 `json:"stripPosition"`
 }
 
 type PingPayload struct {
@@ -91,8 +102,17 @@ func UnmarshalWsMessage(data string) (WsMessage, error) {
 			return msg, err
 		}
 		msg.Payload = payload
+	case CommandReadyForBandColor:
+		msg.Payload = nil
+	case ColorCommandAck:
+		var payload ColorCommandAckPayload
+		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
+			return msg, err
+		}
+		msg.Payload = payload
+
 	default:
-		return WsMessage{}, fmt.Errorf("Unsupported command type: %s", msg.Command)
+		return WsMessage{}, fmt.Errorf("unsupported command type: %s", msg.Command)
 	}
 	return msg, nil
 }

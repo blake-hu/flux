@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/pgvector/pgvector-go"
@@ -41,6 +44,7 @@ var upgrader = websocket.Upgrader{
 }
 
 const port = "8080"
+const color_challenges = 10
 
 type App struct {
 	db             *sqlx.DB
@@ -173,6 +177,8 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		sentColorCommands := []StoredColorCommand{}
+
 		switch parsed_message.Command {
 		case CommandPing:
 			payload, ok := parsed_message.Payload.(PingPayload)
@@ -226,9 +232,98 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Failed to handle ICE offer: %s", err.Error())
 				return
 			}
-			app.sessionManager.CreateSession(sessionId, peerConnection)
+			app.sessionManager.CreateSession(sessionId, peerConnection, ws)
 			defer app.sessionManager.DeleteSession(sessionId)
 			log.Printf("successfully created webrtc session: %s", sessionId)
+		case CommandReadyForBandColor:
+			colors := [3]string{"red", "green", "blue"}
+			// TODO: seeding this off time can be unsecure
+			rng := rand.New(rand.NewSource(time.Now().Unix()))
+			sendRandomColor := func() error {
+				const stripPercentMax = 90
+				const stripPercentMin = 10
+				backgroundColor := colors[rng.Int()%len(colors)]
+				stripColor := colors[rng.Int()%len(colors)]
+				stripPosition := rng.Intn(stripPercentMax-stripPercentMin) + stripPercentMin
+
+				colorMsg, err := MarshalWsMessage(WsMessage{
+					Command: CommandIceAnswer,
+					Payload: SetBandColorPayload{
+						BackgroundColor: backgroundColor,
+						StripColor:      stripColor,
+						StripPosition:   uint16(stripPosition),
+					}})
+				if err != nil {
+					return err
+				}
+				err = ws.WriteMessage(websocket.TextMessage, []byte(colorMsg))
+				if err != nil {
+					return err
+				}
+				sentColorCommands = append(sentColorCommands, StoredColorCommand{
+					BackgroundColor: backgroundColor,
+					StripColor:      stripColor,
+					StripPosition:   uint16(stripPosition),
+					TimeStamp:       time.Now(),
+				})
+				return nil
+			}
+			for i := 0; i < color_challenges; i++ {
+				err := sendRandomColor()
+				if err != nil {
+					log.Printf("failed to send color command: %s", err.Error())
+					return
+				}
+			}
+		case ColorCommandAck:
+			payload, ok := parsed_message.Payload.(ColorCommandAckPayload)
+			if !ok {
+				log.Println("Invaid payload for ColorCommandAck")
+				return
+			}
+			if payload.Index >= len(sentColorCommands) {
+				log.Println("Invalid index")
+				return
+			}
+
+			// TODO: verify that timestamp is legitimate
+			// need to send the color commands on an interval instead of all at
+			// once
+			sentColorCommands[payload.Index].TimeStamp = payload.Timestamp
+
+			// Once we receive the last color, write to csv
+			if payload.Index == color_challenges-1 {
+				folderPath := "./files/csv"
+				os.MkdirAll(folderPath, os.ModePerm)
+				csvFile, err := os.Create(fmt.Sprintf("%s/%s.csv", folderPath, sessionId))
+				if err != nil {
+					log.Println("Failed to create CSV file")
+					return
+				}
+				defer csvFile.Close()
+				writer := csv.NewWriter(csvFile)
+				defer writer.Flush()
+
+				if err := writer.Write([]string{"Background Color", "Strip Color", "Strip Position", "Timestamap"}); err != nil {
+					log.Printf("Failed to write CSV header")
+					return
+				}
+
+				for _, cmd := range sentColorCommands {
+					record := []string{
+						cmd.BackgroundColor,
+						cmd.StripColor,
+						fmt.Sprintf("%d", cmd.StripPosition),
+						fmt.Sprintf("%d", cmd.TimeStamp.UnixMilli()),
+					}
+					if err := writer.Write(record); err != nil {
+						log.Printf("Failed to write record to CSV")
+						return
+					}
+				}
+
+				// make http request with csv file and video file
+			}
 		}
 	}
 }
@@ -254,6 +349,71 @@ func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 
 	}
 }
+
+// func writeToCSV(commands []StoredColorCommand, filename string) error {
+// 	file, err := os.Create(filename)
+// 	if err != nil {
+// 		return fmt.Errorf("error while creating file: %w", err)
+// 	}
+// 	defer file.Close()
+//
+// 	writer := csv.NewWriter(file)
+// 	defer writer.Flush()
+//
+// 	// Write CSV header
+// 	if err := writer.Write([]string{"BackgroundColor", "StripColor", "StripPosition", "TimeStamp"}); err != nil {
+// 		return fmt.Errorf("error while writing header to CSV: %w", err)
+// 	}
+//
+// 	// Write data to CSV
+// 	for _, cmd := range commands {
+// 		record := []string{
+// 			cmd.BackgroundColor,
+// 			cmd.StripColor,
+// 			fmt.Sprintf("%d", cmd.StripPosition),
+// 			fmt.Sprintf("%d", cmd.TimeStamp.UnixNano()/int64(time.Millisecond)), // Convert time.Time to milliseconds since epoch
+// 		}
+//
+// 		if err := writer.Write(record); err != nil {
+// 			return fmt.Errorf("error while writing record to CSV: %w", err)
+// 		}
+// 	}
+//
+// 	return nil
+// }
+
+// func (app *App) generateColors(sessionId string) error {
+// 	session, exists := app.sessionManager.GetSession(sessionId)
+// 	if !exists {
+// 		return fmt.Errorf("session does not exist")
+// 	}
+// 	ws := session.WebSocket
+//
+// 	// send two immediately so that the frontend always has one buffered
+// 	err := sendRandomColor()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = sendRandomColor()
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	ticker := time.NewTicker(500 * time.Millisecond)
+// 	go func() {
+// 		for i := 0; i < 8; i++ {
+// 			select {
+// 			case <-ticker.C:
+// 				err = sendRandomColor()
+// 				if err != nil {
+// 					ticker.Stop()
+// 				}
+// 			}
+// 		}
+// 	}()
+//
+// 	return nil
+// }
 
 func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("hit index handler\n")

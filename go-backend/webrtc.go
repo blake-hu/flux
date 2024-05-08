@@ -1,16 +1,13 @@
 package main
 
 import (
-	"log"
 	"sync"
+	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
 )
-
-func hello() {
-	log.Printf("hello")
-}
 
 func CreateWebRtcConnection() (*webrtc.PeerConnection, error) {
 	config := webrtc.Configuration{
@@ -51,9 +48,18 @@ func CreateWebRtcConnection() (*webrtc.PeerConnection, error) {
 	return peerConnection, nil
 }
 
+type StoredColorCommand struct {
+	BackgroundColor string
+	StripColor      string
+	StripPosition   uint16
+	TimeStamp       time.Time
+}
+
 type Session struct {
-	ID             string
-	PeerConnection *webrtc.PeerConnection
+	ID                string
+	PeerConnection    *webrtc.PeerConnection
+	WebSocket         *websocket.Conn
+	SentColorCommands []StoredColorCommand
 }
 
 type SessionManager struct {
@@ -67,12 +73,14 @@ func NewSessionManager() *SessionManager {
 	}
 }
 
-func (manager *SessionManager) CreateSession(id string, conn *webrtc.PeerConnection) *Session {
+func (manager *SessionManager) CreateSession(id string, conn *webrtc.PeerConnection, ws *websocket.Conn) *Session {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
 	session := &Session{
-		ID:             id,
-		PeerConnection: conn,
+		ID:                id,
+		PeerConnection:    conn,
+		WebSocket:         ws,
+		SentColorCommands: []StoredColorCommand{},
 	}
 	manager.sessions[id] = session
 	return session
