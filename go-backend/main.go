@@ -180,29 +180,6 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		sentColorCommands := []StoredColorCommand{}
 
 		switch parsed_message.Command {
-		case CommandPing:
-			payload, ok := parsed_message.Payload.(PingPayload)
-			if !ok {
-				log.Println("Invalid payload for Ping")
-				return
-			}
-			log.Printf("Ping received: %s", payload.Data)
-
-			response, err := MarshalWsMessage(WsMessage{
-				Command: CommandPong,
-				Payload: PongPayload{
-					Data: payload.Data,
-				},
-			})
-
-			if err != nil {
-				log.Printf("Error marshalling response: %s", err.Error())
-				return
-			}
-			if err := ws.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
-				log.Printf("Error sending response: %s", err.Error())
-				return
-			}
 		case CommandIceCandidate:
 			payload, ok := parsed_message.Payload.(IceCandidatePayload)
 			if !ok {

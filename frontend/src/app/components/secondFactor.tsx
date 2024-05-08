@@ -1,25 +1,21 @@
+<<<<<<< HEAD
 import {useEffect, useRef, useState,useCallback} from 'react';
 import Button from '@mui/material/Button';
 import "./style.css"
 import next from 'next';
+=======
+import { useEffect, useRef, useState, useCallback } from "react";
+import Button from "@mui/material/Button";
+import "./style.css";
+>>>>>>> ad42337 (remove unused ping/pong commands)
 
-
-
-export default function SecondFactor({back}) {
-  
+export default function SecondFactor({ back }) {
   const websocket = new WebSocket("ws://localhost:8080/ws");
   websocket.onopen = e => {
     console.log("WebSocket connection established.");
-    const message = {
-      command: "ping",
-      payload: { data: "Hello, this is a test message" },
-    };
-    websocket.send(JSON.stringify(message));
-
-    startConnection()
+    startConnection();
   };
 
-  
   let remoteDescriptionSet = false;
   const candidateQueue = [];
 
@@ -31,15 +27,16 @@ export default function SecondFactor({back}) {
       const remoteDesc = new RTCSessionDescription(message.payload);
       console.log("Setting remote description...");
       await peerConnection.setRemoteDescription(remoteDesc);
-      remoteDescriptionSet = true
-      flushCandidateQueue()
+      remoteDescriptionSet = true;
+      flushCandidateQueue();
     } else if (message.command === "IceCandidate") {
       const candidate = new RTCIceCandidate(message.payload);
       if (remoteDescriptionSet) {
         await peerConnection.addIceCandidate(candidate);
       } else {
-        candidateQueue.push(candidate)
+        candidateQueue.push(candidate);
       }
+<<<<<<< HEAD
     } else if(message.command === "setBandColor"){
       if(display==false){
         attachVideoStream(camVideoStream) 
@@ -52,13 +49,21 @@ export default function SecondFactor({back}) {
         return clone
       })
     } 
+=======
+    } else if (message.command === "setBandColor") {
+      setBandCol(message.payload.stripColor);
+      setBandPos(message.payload.stripPosition);
+      setBackgroundCol(message.payload.backgroundColor);
+      confirmColorChange();
+    }
+>>>>>>> ad42337 (remove unused ping/pong commands)
   };
 
 
   function flushCandidateQueue() {
     while (candidateQueue.length > 0) {
-      const candidate = candidateQueue.pop()
-      peerConnection.addIceCandidate(candidate)
+      const candidate = candidateQueue.pop();
+      peerConnection.addIceCandidate(candidate);
     }
   }
 
@@ -70,7 +75,9 @@ export default function SecondFactor({back}) {
     console.log("WebSocket Closed:", event.reason);
   };
 
-  const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+  const configuration = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  };
   const peerConnection = new RTCPeerConnection(configuration);
   initialize();
   const dataChannel = peerConnection.createDataChannel("myDataChannel");
@@ -78,10 +85,12 @@ export default function SecondFactor({back}) {
   peerConnection.onicecandidate = event => {
     if (event.candidate) {
       console.log("Sending new ICE candidate...");
-      websocket.send(JSON.stringify({
-        command: "IceCandidate",
-        payload: event.candidate.toJSON()
-      }));
+      websocket.send(
+        JSON.stringify({
+          command: "IceCandidate",
+          payload: event.candidate.toJSON(),
+        }),
+      );
     } else {
       console.log("ICE gathering complete.");
     }
@@ -91,13 +100,13 @@ export default function SecondFactor({back}) {
     console.log("Starting connection...");
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    sendOffer();  
+    sendOffer();
   }
 
   function sendOffer() {
     const message = {
       command: "IceOffer",
-      payload: peerConnection.localDescription
+      payload: peerConnection.localDescription,
     };
     websocket.send(JSON.stringify(message));
     console.log("Offer sent.");
@@ -116,18 +125,17 @@ export default function SecondFactor({back}) {
       
     });
     setCamVideoStream(stream)
-    
   }
 
   function attachVideoStream(stream) {
-    const videoElement = document.querySelector("video")
-    window.stream = stream
+    const videoElement = document.querySelector("video");
+    window.stream = stream;
     camVideo.current.srcObject = stream;
-    peerConnection.addTrack(stream.getVideoTracks()[0], stream)
+    peerConnection.addTrack(stream.getVideoTracks()[0], stream);
   }
 
-  function closeInstruction(e){
-    setInstructions(false)
+  function closeInstruction(e) {
+    setInstructions(false);
 
     const message = {
       command: "readyForBandColor",
@@ -135,18 +143,18 @@ export default function SecondFactor({back}) {
     };
     websocket.send(JSON.stringify(message));
 
-    readyTimeout()
+    readyTimeout();
   }
 
-  async function readyTimeout(){
-    await sleep(10000)
-    peerConnection.close()
-    console.log("connection Closed")
-
+  async function readyTimeout() {
+    await sleep(10000);
+    peerConnection.close();
+    console.log("connection Closed");
   }
 
   async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+<<<<<<< HEAD
 }
 
   
@@ -163,7 +171,17 @@ export default function SecondFactor({back}) {
   const [colorIndex,setColorIndex] = useState(0)
   const [camVideoStream, setCamVideoStream] = useState()
   changeColor()
+=======
+  }
+>>>>>>> ad42337 (remove unused ping/pong commands)
 
+  const [backgroundCol, setBackgroundCol] = useState();
+  const [bandCol, setBandCol] = useState();
+  const [bandPos, setBandPos] = useState();
+  const [instructions, setInstructions] = useState(true);
+  const [displayData, setDisplayData] = useState(null);
+  const camVideo = useRef();
+  const [nextData, setNextData] = useState();
 
   // useEffect(()=>{
   //   if(displayData === null){
@@ -172,12 +190,12 @@ export default function SecondFactor({back}) {
   //   let size = displayData.length;
   //   let current = 0
   //   const interval = setInterval(() => {
-  //     if (current=== size) { 
+  //     if (current=== size) {
   //       return () => clearInterval(interval);
   //     }
 
   //     const newColor = colors[Math.floor(Math.random() * colors.length)]; // Choose a random color
-      
+
   //   }, 20); // Change color every 5 seconds
 
   //   return () => clearInterval(interval);
@@ -185,6 +203,7 @@ export default function SecondFactor({back}) {
   // }, [displayData])
 
   async function confirmColorChange() {
+<<<<<<< HEAD
     console.log("Acknowledging color change");
     let date = new Date()
     const information = {
@@ -218,43 +237,78 @@ export default function SecondFactor({back}) {
         setColorIndex(colorIndex+1)
       }
     }
+=======
+    console.log("Sending message via data channel...");
+    const message = {
+      timestamp: Date.now(),
+    };
+    dataChannel.send(JSON.stringify(message));
+>>>>>>> ad42337 (remove unused ping/pong commands)
   }
-  
-    return (
-        <>            
 
-            <video id="gum-local" playsInline autoPlay ref={camVideo} style={{position:'absolute', left:0, right:0, top:0, bottom:0, margin:'auto', width:"100vw"}} />
-            <div style={{backgroundColor:backgroundCol, width:'100vw', height:'100vw', opacity:'70%'}}>
-                <div style={{backgroundColor:bandCol, width:'100vw', height:'20%',position:'absolute',top:bandPos}}>
-                
-                </div>
-            </div>
-            <img src="oval.png" style={{position:'absolute', top:0, bottom:0, left:0, right:0, margin:'auto', height:'70%'}}/>
+  return (
+    <>
+      <video
+        id="gum-local"
+        playsInline
+        autoPlay
+        ref={camVideo}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          margin: "auto",
+          width: "100vw",
+        }}
+      />
+      <div
+        style={{
+          backgroundColor: backgroundCol,
+          width: "100vw",
+          height: "100vw",
+          opacity: "70%",
+        }}>
+        <div
+          style={{
+            backgroundColor: bandCol,
+            width: "100vw",
+            height: "20%",
+            position: "absolute",
+            top: bandPos,
+          }}></div>
+      </div>
+      <img
+        src="oval.png"
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          margin: "auto",
+          height: "70%",
+        }}
+      />
 
-            {instructions &&
-                <div className='instructionPopup'>
-                  <div className='instructions'>
-                  <h1 className='instructionHead'>
-                    Instructions for Facial Authentication
-                  </h1>
-                  <ul>
-                    <li>
-                      Ensure your face is brightly lit
-                    </li>
-                    <li>
-                      Position your face according to the outline
-                    </li>
-                    <li>
-                      Hold Still until flashing is complete
-                    </li>
-                  </ul>
-                <Button className='instructionButton' onClick={closeInstruction}>I'm Ready</Button>
-                  </div>
-              </div>
-          }
-            
-        </>
-    );
-  };
-
-  
+      {instructions && (
+        <div className="instructionPopup">
+          <div className="instructions">
+            <h1 className="instructionHead">
+              Instructions for Facial Authentication
+            </h1>
+            <ul>
+              <li>Ensure your face is brightly lit</li>
+              <li>Position your face according to the outline</li>
+              <li>Hold Still until flashing is complete</li>
+            </ul>
+            <Button className="instructionButton" onClick={closeInstruction}>
+              I'm Ready
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

@@ -9,8 +9,6 @@ import (
 type Command string
 
 const (
-	CommandPing              Command = "ping"
-	CommandPong              Command = "pong"
 	CommandIceOffer          Command = "IceOffer"
 	CommandIceAnswer         Command = "IceAnswer"
 	CommandIceCandidate      Command = "IceCandidate"
@@ -31,14 +29,6 @@ type SetBandColorPayload struct {
 	BackgroundColor string `json:"backgroundColor"`
 	StripColor      string `json:"stripColor"`
 	StripPosition   uint16 `json:"stripPosition"`
-}
-
-type PingPayload struct {
-	Data string `json:"data"`
-}
-
-type PongPayload struct {
-	Data string `json:"data"`
 }
 
 type IceOfferPayload struct {
@@ -84,12 +74,6 @@ func UnmarshalWsMessage(data string) (WsMessage, error) {
 	msg.Command = tempMsg.Command
 
 	switch msg.Command {
-	case CommandPing:
-		var payload PingPayload
-		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
-			return msg, err
-		}
-		msg.Payload = payload
 	case CommandIceOffer:
 		var payload IceOfferPayload
 		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
