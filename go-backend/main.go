@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -23,14 +24,14 @@ import (
 )
 
 var schema = `
-CREATE TABLE IF NOT EXISTS person (
-	first_name text,
-	last_name text,
-	email text,
-	embedding vector(3)
+CREATE TABLE IF NOT EXISTS user (
+	email TEXT PRIMARY KEY,
+	first_name TEXT NOT NULL,
+	last_name TEXT NOT NULL,
+	embedding vector(3) NOT NULL
 );`
 
-type Person struct {
+type User struct {
 	FirstName string          `db:"first_name"`
 	LastName  string          `db:"last_name"`
 	Email     string          `db:"email"`
@@ -70,7 +71,7 @@ func main() {
 	server := http.Server{
 		Addr: ":" + port,
 	}
-	http.HandleFunc("/", app.indexHandler)
+	http.HandleFunc("/enroll", app.enrollHandler)
 	http.HandleFunc("/ws", app.wsHandler)
 
 	if err := server.ListenAndServe(); err != nil {
@@ -322,20 +323,43 @@ func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 	}
 }
 
-func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("hit index handler\n")
-	people := []Person{
-		{FirstName: "Max", LastName: "Glass", Email: "glass@u.northwestern.edu", Embedding: pgvector.NewVector([]float32{1, 1, 1})},
-		{FirstName: "Blake", LastName: "Hu", Email: "email", Embedding: pgvector.NewVector([]float32{2, 2, 2})},
-	}
-	_, err := app.db.NamedExec("INSERT INTO person (first_name, last_name, email, embedding) VALUES (:first_name, :last_name, :email, :embedding)", people)
-	if err != nil {
-		log.Fatalf("failed to insert %s\n", err.Error())
+type EnrollBody struct {
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Embedding []float32 `json:"embedding"`
+}
+
+func (app *App) enrollHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
 
-	var selected_people []Person
-	app.db.Select(&selected_people, "SELECT * FROM person ORDER BY embedding <-> $1 limit 4", pgvector.NewVector([]float32{1, 1, 1}))
-	fmt.Printf("people: %+v\n", selected_people)
+	// get face embedding and insert into database along with name, lastname , and email
+	var body EnrollBody
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// TODO: validate
+
+	user := User{
+		FirstName: body.FirstName,
+		LastName:  body.LastName,
+		Email:     body.Email,
+		Embedding: pgvector.NewVector(body.Embedding),
+	}
+
+	_, err = app.db.NamedExec("INSERT INTO user (first_name, last_name, email, embedding) VALUES (:first_name, :last_name, :email, :embedding)", user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // Endpoints:
