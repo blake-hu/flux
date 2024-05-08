@@ -149,7 +149,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	folderPath := "./files/video"
 	os.MkdirAll(folderPath, os.ModePerm)
-	h264File, err := h264writer.New(folderPath + "/output.mp4")
+	h264File, err := h264writer.New(fmt.Sprintf("%s/%s.mp4", folderPath, sessionId))
 	if err != nil {
 		panic(err)
 	}
@@ -158,7 +158,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		codec := track.Codec()
 		log.Printf("New Track %s %s", track.Kind().String(), track.ID())
 		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
-			fmt.Println("Got VP8 track, saving to disk as output.mp4")
+			fmt.Printf("Got VP8 track, saving to disk as %s.mp4\n", sessionId)
 			saveToDisk(h264File, track)
 		}
 	})
@@ -342,9 +342,34 @@ func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 			fmt.Println(err)
 			return
 		}
-
 	}
 }
+
+func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("hit index handler\n")
+	people := []Person{
+		{FirstName: "Max", LastName: "Glass", Email: "glass@u.northwestern.edu", Embedding: pgvector.NewVector([]float32{1, 1, 1})},
+		{FirstName: "Blake", LastName: "Hu", Email: "email", Embedding: pgvector.NewVector([]float32{2, 2, 2})},
+	}
+	_, err := app.db.NamedExec("INSERT INTO person (first_name, last_name, email, embedding) VALUES (:first_name, :last_name, :email, :embedding)", people)
+	if err != nil {
+		log.Fatalf("failed to insert %s\n", err.Error())
+	}
+
+	var selected_people []Person
+	app.db.Select(&selected_people, "SELECT * FROM person ORDER BY embedding <-> $1 limit 4", pgvector.NewVector([]float32{1, 1, 1}))
+	fmt.Printf("people: %+v\n", selected_people)
+}
+
+// Endpoints:
+// enroll new user
+// - email, video
+// authenticate user
+// - email, video -> JWT(claim: email)
+//
+//			     --- python
+// go server <-> |
+//		         --- python
 
 // func writeToCSV(commands []StoredColorCommand, filename string) error {
 // 	file, err := os.Create(filename)
@@ -410,29 +435,3 @@ func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 //
 // 	return nil
 // }
-
-func (app *App) indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("hit index handler\n")
-	people := []Person{
-		{FirstName: "Max", LastName: "Glass", Email: "glass@u.northwestern.edu", Embedding: pgvector.NewVector([]float32{1, 1, 1})},
-		{FirstName: "Blake", LastName: "Hu", Email: "email", Embedding: pgvector.NewVector([]float32{2, 2, 2})},
-	}
-	_, err := app.db.NamedExec("INSERT INTO person (first_name, last_name, email, embedding) VALUES (:first_name, :last_name, :email, :embedding)", people)
-	if err != nil {
-		log.Fatalf("failed to insert %s\n", err.Error())
-	}
-
-	var selected_people []Person
-	app.db.Select(&selected_people, "SELECT * FROM person ORDER BY embedding <-> $1 limit 4", pgvector.NewVector([]float32{1, 1, 1}))
-	fmt.Printf("people: %+v\n", selected_people)
-}
-
-// Endpoints:
-// enroll new user
-// - email, video
-// authenticate user
-// - email, video -> JWT(claim: email)
-//
-//			     --- python
-// go server <-> |
-//		         --- python
