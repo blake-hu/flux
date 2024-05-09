@@ -1,13 +1,8 @@
-<<<<<<< HEAD
-import {useEffect, useRef, useState,useCallback} from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Button from '@mui/material/Button';
 import "./style.css"
 import next from 'next';
-=======
-import { useEffect, useRef, useState, useCallback } from "react";
-import Button from "@mui/material/Button";
-import "./style.css";
->>>>>>> ad42337 (remove unused ping/pong commands)
+
 
 export default function SecondFactor({ back }) {
   const websocket = new WebSocket("ws://localhost:8080/ws");
@@ -36,27 +31,18 @@ export default function SecondFactor({ back }) {
       } else {
         candidateQueue.push(candidate);
       }
-<<<<<<< HEAD
-    } else if(message.command === "setBandColor"){
-      if(display==false){
-        attachVideoStream(camVideoStream) 
+    } else if (message.command === "setBandColor") {
+      if (display == false) {
+        attachVideoStream(camVideoStream)
       }
       setDisplay(true)
       setNextData(data => {
         let clone = structuredClone(data)
         clone.push(message.payload)
-        
         return clone
       })
-    } 
-=======
-    } else if (message.command === "setBandColor") {
-      setBandCol(message.payload.stripColor);
-      setBandPos(message.payload.stripPosition);
-      setBackgroundCol(message.payload.backgroundColor);
-      confirmColorChange();
     }
->>>>>>> ad42337 (remove unused ping/pong commands)
+
   };
 
 
@@ -121,8 +107,8 @@ export default function SecondFactor({ back }) {
   async function initialize() {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: {width: 1280, height: 720}
-      
+      video: { width: 1280, height: 720 }
+
     });
     setCamVideoStream(stream)
   }
@@ -154,56 +140,28 @@ export default function SecondFactor({ back }) {
 
   async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-<<<<<<< HEAD
-}
 
-  
+  }
+
+
 
 
   const [backgroundCol, setBackgroundCol] = useState()
-  const [bandCol,setBandCol] = useState()
+  const [bandCol, setBandCol] = useState()
   const [bandPos, setBandPos] = useState()
   const [instructions, setInstructions] = useState(true)
   const [displayData, setDisplayData] = useState(null)
   const [display, setDisplay] = useState(false)
   const camVideo = useRef()
   const [nextData, setNextData] = useState([])
-  const [colorIndex,setColorIndex] = useState(0)
+  const [colorIndex, setColorIndex] = useState(0)
   const [camVideoStream, setCamVideoStream] = useState()
   changeColor()
-=======
-  }
->>>>>>> ad42337 (remove unused ping/pong commands)
 
-  const [backgroundCol, setBackgroundCol] = useState();
-  const [bandCol, setBandCol] = useState();
-  const [bandPos, setBandPos] = useState();
-  const [instructions, setInstructions] = useState(true);
-  const [displayData, setDisplayData] = useState(null);
-  const camVideo = useRef();
-  const [nextData, setNextData] = useState();
 
-  // useEffect(()=>{
-  //   if(displayData === null){
-  //     return
-  //   }
-  //   let size = displayData.length;
-  //   let current = 0
-  //   const interval = setInterval(() => {
-  //     if (current=== size) {
-  //       return () => clearInterval(interval);
-  //     }
 
-  //     const newColor = colors[Math.floor(Math.random() * colors.length)]; // Choose a random color
-
-  //   }, 20); // Change color every 5 seconds
-
-  //   return () => clearInterval(interval);
-
-  // }, [displayData])
 
   async function confirmColorChange() {
-<<<<<<< HEAD
     console.log("Acknowledging color change");
     let date = new Date()
     const information = {
@@ -221,9 +179,9 @@ export default function SecondFactor({ back }) {
     websocket.send(JSON.stringify(message));
   }
 
-  async function changeColor(){
-    while(true){
-      if(display && nextData.length!=0){   
+  async function changeColor() {
+    while (true) {
+      if (display && nextData.length != 0) {
         setBackgroundCol(nextData[0].backgroundCol)
         setBandPos(nextData[0].stripPos)
         setBandCol(nextData[0].stripCol)
@@ -234,16 +192,9 @@ export default function SecondFactor({ back }) {
           let top = clone.unshift()
           return clone
         })
-        setColorIndex(colorIndex+1)
+        setColorIndex(colorIndex + 1)
       }
     }
-=======
-    console.log("Sending message via data channel...");
-    const message = {
-      timestamp: Date.now(),
-    };
-    dataChannel.send(JSON.stringify(message));
->>>>>>> ad42337 (remove unused ping/pong commands)
   }
 
   return (
