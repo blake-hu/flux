@@ -24,16 +24,12 @@ import (
 )
 
 var schema = `
-CREATE TABLE IF NOT EXISTS user (
+CREATE TABLE IF NOT EXISTS registered_user (
 	email TEXT PRIMARY KEY,
-	first_name TEXT NOT NULL,
-	last_name TEXT NOT NULL,
 	embedding vector(3) NOT NULL
 );`
 
 type User struct {
-	FirstName string          `db:"first_name"`
-	LastName  string          `db:"last_name"`
 	Email     string          `db:"email"`
 	Embedding pgvector.Vector `db:"embedding"`
 }
@@ -328,7 +324,7 @@ func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 
 func (app *App) getUserByEmbedding(embedding pgvector.Vector) (User, error) {
 	var user User
-	err := app.db.Select(&user, "SELECT * FROM user ORDER BY embedding <-> $1 LIMIT 1", embedding)
+	err := app.db.Select(&user, "SELECT * FROM registered_user ORDER BY embedding <-> $1 LIMIT 1", embedding)
 	if err != nil {
 		return User{}, err
 	}
@@ -338,7 +334,7 @@ func (app *App) getUserByEmbedding(embedding pgvector.Vector) (User, error) {
 
 	var total_distance float32 = 0
 	for i := range user.Embedding.Slice() {
-		diff = (user.Embedding.Slice()[i] - embedding.Slice()[i])
+		diff := (user.Embedding.Slice()[i] - embedding.Slice()[i])
 		total_distance += diff * diff
 	}
 
@@ -350,8 +346,6 @@ func (app *App) getUserByEmbedding(embedding pgvector.Vector) (User, error) {
 }
 
 type EnrollBody struct {
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
 	Email     string    `json:"email"`
 	Embedding []float32 `json:"embedding"`
 }
@@ -372,13 +366,11 @@ func (app *App) enrollHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: validate
 
 	user := User{
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
 		Email:     body.Email,
 		Embedding: pgvector.NewVector(body.Embedding),
 	}
 
-	_, err = app.db.NamedExec("INSERT INTO user (first_name, last_name, email, embedding) VALUES (:first_name, :last_name, :email, :embedding)", user)
+	_, err = app.db.NamedExec("INSERT INTO registered_user (email, embedding) VALUES (:email, :embedding)", user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
