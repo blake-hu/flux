@@ -176,7 +176,6 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sentColorCommands := []StoredColorCommand{}
 		var email string
 
 		switch parsed_message.Command {
@@ -231,7 +230,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				stripPosition := rng.Intn(stripPercentMax-stripPercentMin) + stripPercentMin
 
 				colorMsg, err := MarshalWsMessage(WsMessage{
-					Command: CommandIceAnswer,
+					Command: CommandSetBandColor,
 					Payload: SetBandColorPayload{
 						BackgroundColor: backgroundColor,
 						StripColor:      stripColor,
@@ -240,19 +239,27 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					return err
 				}
-				err = ws.WriteMessage(websocket.TextMessage, []byte(colorMsg))
-				if err != nil {
-					return err
+
+				session, exists := app.sessionManager.GetSession(sessionId)
+				if !exists {
+					return fmt.Errorf("session does not exist")
 				}
-				sentColorCommands = append(sentColorCommands, StoredColorCommand{
+				session.SentColorCommands = append(session.SentColorCommands, StoredColorCommand{
 					BackgroundColor: backgroundColor,
 					StripColor:      stripColor,
 					StripPosition:   uint16(stripPosition),
 					TimeStamp:       time.Now(),
 				})
+
+				err = ws.WriteMessage(websocket.TextMessage, []byte(colorMsg))
+				if err != nil {
+					return err
+				}
+
 				return nil
 			}
 			for i := 0; i < COLOR_CHALLENGES; i++ {
+				time.Sleep(500 * time.Millisecond)
 				err := sendRandomColor()
 				if err != nil {
 					log.Printf("failed to send color command: %s", err.Error())
@@ -265,15 +272,16 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println("Invaid payload for ColorCommandAck")
 				return
 			}
-			if payload.Index >= len(sentColorCommands) {
-				log.Println("Invalid index")
+			session, exists := app.sessionManager.GetSession(sessionId)
+			if !exists {
+				log.Printf("Session does not exist")
 				return
 			}
 
 			// TODO: verify that timestamp is legitimate
 			// need to send the color commands on an interval instead of all at
 			// once
-			sentColorCommands[payload.Index].TimeStamp = payload.Timestamp
+			session.SentColorCommands[payload.Index].TimeStamp = payload.Timestamp
 
 			// Once we receive the last color, write to csv
 			if payload.Index == COLOR_CHALLENGES-1 {
@@ -293,7 +301,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				for _, cmd := range sentColorCommands {
+				for _, cmd := range session.SentColorCommands {
 					record := []string{
 						cmd.BackgroundColor,
 						cmd.StripColor,

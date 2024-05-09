@@ -3,6 +3,26 @@ import Button from "@mui/material/Button";
 import "./style.css";
 import next from "next";
 
+function useInterval(callback, delay) {
+  const savedCallback = useRef();
+
+  // Remember the latest callback.
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  // Set up the interval.
+  useEffect(() => {
+    function tick() {
+      savedCallback.current();
+    }
+    if (delay !== null) {
+      let id = setInterval(tick, delay);
+      return () => clearInterval(id);
+    }
+  }, [delay]);
+}
+
 export default function SecondFactor({ back, email }) {
   const websocket = useRef(null);
 
@@ -38,14 +58,11 @@ export default function SecondFactor({ back, email }) {
 
   // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
 
-  async function initialize() {}
-
   async function attachVideoStream() {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: { width: 1280, height: 720 },
     });
-    const videoElement = document.querySelector("video");
     window.stream = stream;
     camVideo.current.srcObject = stream;
     peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
@@ -80,7 +97,7 @@ export default function SecondFactor({ back, email }) {
   const [displayData, setDisplayData] = useState(null);
   const [display, setDisplay] = useState(false);
   const camVideo = useRef();
-  const [nextData, setNextData] = useState([]);
+  const [nextData, setNextData] = useState<any>([]);
   const [colorIndex, setColorIndex] = useState(0);
 
   async function confirmColorChange() {
@@ -91,45 +108,57 @@ export default function SecondFactor({ back, email }) {
       backgroundColor: backgroundCol,
       stripColor: bandCol,
       stripPosition: bandPos,
+      index: colorIndex,
     };
 
     const message = {
-      command: "ColorCommandAck",
+      command: "colorCommandAck",
       payload: { information },
     };
 
     websocket.current.send(JSON.stringify(message));
   }
 
-  async function changeColor() {
-    let intervalId;
+  // const updateColor = useCallback(() => {
 
-    function updateColor() {
-      if (display && nextData.length !== 0) {
-        setBackgroundCol(nextData[0].backgroundCol);
-        setBandPos(nextData[0].stripPos);
-        setBandCol(nextData[0].stripCol);
-        confirmColorChange();
-        setNextData(data => {
-          const clone = [...data];
-          clone.shift();
-          return clone;
-        });
-        setColorIndex(colorIndex + 1);
-      }
+  //   console.log("in update color", nextData);
+  //   if (display && nextData.length !== 0) {
+  //     setBackgroundCol(nextData[0].backgroundCol);
+  //     setBandPos(nextData[0].stripPos);
+  //     setBandCol(nextData[0].stripCol);
+  //     confirmColorChange();
+  //     setNextData((data: any) => {
+  //       const clone = [...data];
+  //       clone.shift();
+  //       return clone;
+  //     });
+  //     setColorIndex(colorIndex + 1);
+  //   }
+  // }, [display, nextData, colorIndex, confirmColorChange]);
+
+  useInterval(() => {
+    if (display && nextData.length !== 0) {
+      setBackgroundCol(nextData[0].backgroundCol);
+      setBandPos(nextData[0].stripPos);
+      setBandCol(nextData[0].stripCol);
+      confirmColorChange();
+      setNextData((data: any) => {
+        const clone = [...data];
+        clone.shift();
+        return clone;
+      });
+      setColorIndex(colorIndex + 1);
     }
-
-    intervalId = setInterval(updateColor, 500);
-
-    return () => clearInterval(intervalId); // Cleanup function
-  }
+  }, 500);
 
   const peerConnection = useRef(null);
   useEffect(() => {
-    initialize();
-
     if (!websocket.current) {
       websocket.current = new WebSocket("ws://localhost:8080/ws");
+
+      websocket.current.onclose = e => {
+        console.log("WebSocket connection closed.");
+      };
 
       websocket.current.onopen = e => {
         console.log("WebSocket connection established.");
@@ -156,11 +185,16 @@ export default function SecondFactor({ back, email }) {
         } else if (message.command === "setBandColor") {
           if (display == false) {
             await attachVideoStream();
+            setDisplay(true);
           }
-          setDisplay(true);
+
+          // console.log("Setting band color...");
           setNextData(data => {
             let clone = structuredClone(data);
+            // console.log("pushing", message.payload);
             clone.push(message.payload);
+
+            // console.log(clone);
             return clone;
           });
         }
@@ -194,8 +228,6 @@ export default function SecondFactor({ back, email }) {
           peerConnection.current.connectionState,
         );
       };
-
-      changeColor();
 
       // Additional setup like handling incoming data channels or streams
     }
