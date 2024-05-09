@@ -44,8 +44,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-const port = "8080"
-const color_challenges = 10
+const PORT = "8080"
+const COLOR_CHALLENGES = 10
+const EMBEDDING_THRESHOLD = 0.5
+const INFERENCE_BACKEND_URL = "http://inference-backend:5000"
 
 type App struct {
 	db             *sqlx.DB
@@ -69,7 +71,7 @@ func main() {
 	db.MustExec(schema)
 
 	server := http.Server{
-		Addr: ":" + port,
+		Addr: ":" + PORT,
 	}
 	http.HandleFunc("/enroll", app.enrollHandler)
 	http.HandleFunc("/ws", app.wsHandler)
@@ -246,7 +248,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				})
 				return nil
 			}
-			for i := 0; i < color_challenges; i++ {
+			for i := 0; i < COLOR_CHALLENGES; i++ {
 				err := sendRandomColor()
 				if err != nil {
 					log.Printf("failed to send color command: %s", err.Error())
@@ -270,7 +272,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			sentColorCommands[payload.Index].TimeStamp = payload.Timestamp
 
 			// Once we receive the last color, write to csv
-			if payload.Index == color_challenges-1 {
+			if payload.Index == COLOR_CHALLENGES-1 {
 				folderPath := "./files/csv"
 				os.MkdirAll(folderPath, os.ModePerm)
 				csvFile, err := os.Create(fmt.Sprintf("%s/%s.csv", folderPath, sessionId))
@@ -301,6 +303,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// make http request with csv file and video file
+
 			}
 		}
 	}
@@ -323,6 +326,29 @@ func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 	}
 }
 
+func (app *App) getUserByEmbedding(embedding pgvector.Vector) (User, error) {
+	var user User
+	err := app.db.Select(&user, "SELECT * FROM user ORDER BY embedding <-> $1 LIMIT 1", embedding)
+	if err != nil {
+		return User{}, err
+	}
+	if len(user.Embedding.Slice()) != len(embedding.Slice()) {
+		return User{}, fmt.Errorf("expected embedding length %d, got %d", len(embedding.Slice()), len(user.Embedding.Slice()))
+	}
+
+	var total_distance float32 = 0
+	for i := range user.Embedding.Slice() {
+		diff = (user.Embedding.Slice()[i] - embedding.Slice()[i])
+		total_distance += diff * diff
+	}
+
+	if total_distance > EMBEDDING_THRESHOLD {
+		return User{}, fmt.Errorf("no user found")
+	}
+
+	return User{}, nil
+}
+
 type EnrollBody struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
@@ -336,7 +362,6 @@ func (app *App) enrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get face embedding and insert into database along with name, lastname , and email
 	var body EnrollBody
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
