@@ -64,8 +64,7 @@ export default function SecondFactor({ back ,email}) {
   const configuration = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
-  const peerConnection = new RTCPeerConnection(configuration);
-  initialize();
+  const [peerConnection] = useState(() => new RTCPeerConnection(configuration));
   const dataChannel = peerConnection.createDataChannel("myDataChannel");
 
   peerConnection.onicecandidate = event => {
@@ -199,6 +198,10 @@ export default function SecondFactor({ back ,email}) {
   
     return () => clearInterval(intervalId); // Cleanup function
   }
+
+  useEffect(() => {
+    initialize()
+  },[])
   
 
   return (
