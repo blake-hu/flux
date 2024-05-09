@@ -17,6 +17,10 @@ const (
 	ColorCommandAck          Command = "colorCommandAck"
 )
 
+type ReadyForBandColorPayload struct {
+	Email string `json:"email"`
+}
+
 type ColorCommandAckPayload struct {
 	BackgroundColor string    `json:"backgroundColor"`
 	StripColor      string    `json:"stripColor"`
@@ -87,7 +91,11 @@ func UnmarshalWsMessage(data string) (WsMessage, error) {
 		}
 		msg.Payload = payload
 	case CommandReadyForBandColor:
-		msg.Payload = nil
+		var payload ReadyForBandColorPayload
+		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {
+			return msg, err
+		}
+		msg.Payload = payload
 	case ColorCommandAck:
 		var payload ColorCommandAckPayload
 		if err := json.Unmarshal(*tempMsg.Payload, &payload); err != nil {

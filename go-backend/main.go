@@ -177,6 +177,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		sentColorCommands := []StoredColorCommand{}
+		var email string
 
 		switch parsed_message.Command {
 		case CommandIceCandidate:
@@ -212,6 +213,13 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			defer app.sessionManager.DeleteSession(sessionId)
 			log.Printf("successfully created webrtc session: %s", sessionId)
 		case CommandReadyForBandColor:
+			payload, ok := parsed_message.Payload.(ReadyForBandColorPayload)
+			if !ok {
+				log.Println("Invalid payload for ReadyForBandColor")
+				return
+			}
+			email = payload.Email
+
 			colors := [3]string{"red", "green", "blue"}
 			// TODO: seeding this off time can be unsecure
 			rng := rand.New(rand.NewSource(time.Now().Unix()))
@@ -297,6 +305,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
+				fmt.Printf("Email: %s\n", email)
 
 				// make http request with csv file and video file
 
