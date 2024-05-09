@@ -53,23 +53,7 @@ export default function SecondFactor({ back ,email}) {
 
     });
     setCamVideoStream(stream)
-    peerConnection.current.onicecandidate = event => {
-      if (event.candidate) {
-        console.log("Sending new ICE candidate...");
-        websocket.current.send(
-          JSON.stringify({
-            command: "IceCandidate",
-            payload: event.candidate.toJSON(),
-          }),
-        );
-      } else {
-        console.log("ICE gathering complete.");
-      }
-    };
-
-    peerConnection.current.onconnectionstatechange = event => {
-      console.log("Connection state change:", peerConnection.current.connectionState);
-    };
+    
   }
 
   function attachVideoStream(stream) {
@@ -162,6 +146,8 @@ export default function SecondFactor({ back ,email}) {
   const peerConnection = useRef(null);
   useEffect(() => {
 
+    initialize()
+
     if(!websocket.current){
       websocket.current = new WebSocket("ws://localhost:8080/ws");
 
@@ -211,8 +197,26 @@ export default function SecondFactor({ back ,email}) {
     if (!peerConnection.current) {
         peerConnection.current = new RTCPeerConnection(configuration);
 
-        initialize()
+        
         let dataChannel = peerConnection.current.createDataChannel("myDataChannel");
+
+        peerConnection.current.onicecandidate = event => {
+          if (event.candidate) {
+            console.log("Sending new ICE candidate...");
+            websocket.current.send(
+              JSON.stringify({
+                command: "IceCandidate",
+                payload: event.candidate.toJSON(),
+              }),
+            );
+          } else {
+            console.log("ICE gathering complete.");
+          }
+        };
+    
+        peerConnection.current.onconnectionstatechange = event => {
+          console.log("Connection state change:", peerConnection.current.connectionState);
+        };
         
         changeColor()
         
