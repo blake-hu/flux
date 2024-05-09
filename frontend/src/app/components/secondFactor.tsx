@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState,useCallback} from 'react';
 import Button from '@mui/material/Button';
 import "./style.css"
+import next from 'next';
 
 
 
@@ -40,13 +41,19 @@ export default function SecondFactor({back}) {
         candidateQueue.push(candidate)
       }
     } else if(message.command === "setBandColor"){
-      
-      setBandCol(message.payload.stripColor)
-      setBandPos(message.payload.stripPosition)
-      setBackgroundCol(message.payload.backgroundColor)
-      confirmColorChange()
+      if(display==false){
+        attachVideoStream(camVideoStream) 
+      }
+      setDisplay(true)
+      setNextData(data => {
+        let clone = structuredClone(data)
+        clone.push(message.payload)
+        
+        return clone
+      })
     } 
   };
+
 
   function flushCandidateQueue() {
     while (candidateQueue.length > 0) {
@@ -106,8 +113,10 @@ export default function SecondFactor({back}) {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {width: 1280, height: 720}
+      
     });
-    attachVideoStream(stream)
+    setCamVideoStream(stream)
+    
   }
 
   function attachVideoStream(stream) {
@@ -148,8 +157,12 @@ export default function SecondFactor({back}) {
   const [bandPos, setBandPos] = useState()
   const [instructions, setInstructions] = useState(true)
   const [displayData, setDisplayData] = useState(null)
+  const [display, setDisplay] = useState(false)
   const camVideo = useRef()
-  const [nextData, setNextData] = useState()
+  const [nextData, setNextData] = useState([])
+  const [colorIndex,setColorIndex] = useState(0)
+  const [camVideoStream, setCamVideoStream] = useState()
+  changeColor()
 
 
   // useEffect(()=>{
@@ -172,11 +185,39 @@ export default function SecondFactor({back}) {
   // }, [displayData])
 
   async function confirmColorChange() {
-    console.log("Sending message via data channel...");
-    const message = {
-      timestamp: Date.now()
+    console.log("Acknowledging color change");
+    let date = new Date()
+    const information = {
+      timestamp: date.toISOString(),
+      backgroundColor: backgroundCol,
+      stripColor: bandCol,
+      stripPosition: bandPos,
     }
-    dataChannel.send(JSON.stringify(message));
+
+    const message = {
+      command: "ColorCommandAck",
+      payload: information,
+    };
+
+    websocket.send(JSON.stringify(message));
+  }
+
+  async function changeColor(){
+    while(true){
+      if(display && nextData.length!=0){   
+        setBackgroundCol(nextData[0].backgroundCol)
+        setBandPos(nextData[0].stripPos)
+        setBandCol(nextData[0].stripCol)
+        confirmColorChange()
+        await sleep(500)
+        setNextData(data => {
+          let clone = structuredClone(data)
+          let top = clone.unshift()
+          return clone
+        })
+        setColorIndex(colorIndex+1)
+      }
+    }
   }
   
     return (
