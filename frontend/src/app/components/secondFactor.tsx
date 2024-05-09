@@ -4,7 +4,7 @@ import "./style.css"
 import next from 'next';
 
 
-export default function SecondFactor({ back }) {
+export default function SecondFactor({ back ,email}) {
   const websocket = new WebSocket("ws://localhost:8080/ws");
   websocket.onopen = e => {
     console.log("WebSocket connection established.");
@@ -125,7 +125,7 @@ export default function SecondFactor({ back }) {
 
     const message = {
       command: "readyForBandColor",
-      payload: { data: "Ready" },
+      email: email
     };
     websocket.send(JSON.stringify(message));
 
@@ -142,9 +142,6 @@ export default function SecondFactor({ back }) {
     return new Promise(resolve => setTimeout(resolve, ms));
 
   }
-
-
-
 
   const [backgroundCol, setBackgroundCol] = useState()
   const [bandCol, setBandCol] = useState()
