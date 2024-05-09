@@ -139,7 +139,7 @@ export default function SecondFactor({ back, email }) {
   useInterval(() => {
     if (display && nextData.length !== 0) {
       setBackgroundCol(nextData[0].backgroundColor);
-      setBandPos(nextData[0].stripPosition);
+      setBandPos(nextData[0].stripPosition+"%");
       setBandCol(nextData[0].stripColor);
       confirmColorChange();
       setNextData((data: any) => {
