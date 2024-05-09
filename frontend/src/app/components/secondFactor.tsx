@@ -176,23 +176,30 @@ export default function SecondFactor({ back ,email}) {
     websocket.send(JSON.stringify(message));
   }
 
+  
   async function changeColor() {
-    while (true) {
-      if (display && nextData.length != 0) {
-        setBackgroundCol(nextData[0].backgroundCol)
-        setBandPos(nextData[0].stripPos)
-        setBandCol(nextData[0].stripCol)
-        confirmColorChange()
-        await sleep(500)
+    let intervalId;
+  
+    function updateColor() {
+      if (display && nextData.length !== 0) {
+        setBackgroundCol(nextData[0].backgroundCol);
+        setBandPos(nextData[0].stripPos);
+        setBandCol(nextData[0].stripCol);
+        confirmColorChange();
         setNextData(data => {
-          let clone = structuredClone(data)
-          let top = clone.unshift()
-          return clone
-        })
-        setColorIndex(colorIndex + 1)
+          const clone = [...data];
+          clone.shift();
+          return clone;
+        });
+        setColorIndex(colorIndex + 1);
       }
     }
+  
+    intervalId = setInterval(updateColor, 500);
+  
+    return () => clearInterval(intervalId); // Cleanup function
   }
+  
 
   return (
     <>
