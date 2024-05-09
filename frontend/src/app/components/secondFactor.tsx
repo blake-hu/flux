@@ -64,7 +64,7 @@ export default function SecondFactor({ back ,email}) {
   const configuration = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
-  // const dataChannel = peerConnection.createDataChannel("myDataChannel");
+  
 
 
 
@@ -211,6 +211,7 @@ export default function SecondFactor({ back ,email}) {
         peerConnection.current = new RTCPeerConnection();
 
         initialize()
+        let dataChannel = peerConnection.current.createDataChannel("myDataChannel");
         
         
         // Additional setup like handling incoming data channels or streams
