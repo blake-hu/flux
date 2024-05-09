@@ -14,6 +14,6 @@ WORKDIR /usr/inference-backend
 COPY ./inference-backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./inference-backend/app .
+COPY ./inference-backend .
 
 CMD ["python", "app.py"]

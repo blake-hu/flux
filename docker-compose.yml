@@ -31,7 +31,7 @@ services:
       context: .
       dockerfile: ./inference-backend/Dockerfile
     ports:
-      - "5001:5000"
+      - "5005:5000"
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
