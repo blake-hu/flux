@@ -64,22 +64,9 @@ export default function SecondFactor({ back ,email}) {
   const configuration = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
-  const [peerConnection] = useState(() => new RTCPeerConnection(configuration));
-  const dataChannel = peerConnection.createDataChannel("myDataChannel");
+  // const dataChannel = peerConnection.createDataChannel("myDataChannel");
 
-  peerConnection.onicecandidate = event => {
-    if (event.candidate) {
-      console.log("Sending new ICE candidate...");
-      websocket.send(
-        JSON.stringify({
-          command: "IceCandidate",
-          payload: event.candidate.toJSON(),
-        }),
-      );
-    } else {
-      console.log("ICE gathering complete.");
-    }
-  };
+
 
   async function startConnection() {
     console.log("Starting connection...");
@@ -97,9 +84,7 @@ export default function SecondFactor({ back ,email}) {
     console.log("Offer sent.");
   }
 
-  peerConnection.onconnectionstatechange = event => {
-    console.log("Connection state change:", peerConnection.connectionState);
-  };
+  
 
   // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
 
@@ -110,6 +95,23 @@ export default function SecondFactor({ back ,email}) {
 
     });
     setCamVideoStream(stream)
+    peerConnection.onicecandidate = event => {
+      if (event.candidate) {
+        console.log("Sending new ICE candidate...");
+        websocket.send(
+          JSON.stringify({
+            command: "IceCandidate",
+            payload: event.candidate.toJSON(),
+          }),
+        );
+      } else {
+        console.log("ICE gathering complete.");
+      }
+    };
+
+    peerConnection.onconnectionstatechange = event => {
+      console.log("Connection state change:", peerConnection.connectionState);
+    };
   }
 
   function attachVideoStream(stream) {
@@ -199,8 +201,22 @@ export default function SecondFactor({ back ,email}) {
     return () => clearInterval(intervalId); // Cleanup function
   }
 
+  const peerConnection = useRef(null);
   useEffect(() => {
-    initialize()
+
+    
+
+    // Initialize the peer connection when the component mounts
+    if (!peerConnection.current) {
+        peerConnection.current = new RTCPeerConnection();
+
+        initialize()
+        
+        
+        // Additional setup like handling incoming data channels or streams
+    }
+        
+        
   },[])
   
 
