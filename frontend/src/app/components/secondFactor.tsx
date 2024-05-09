@@ -1,16 +1,13 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import Button from '@mui/material/Button';
-import "./style.css"
-import next from 'next';
+import { useEffect, useRef, useState, useCallback } from "react";
+import Button from "@mui/material/Button";
+import "./style.css";
+import next from "next";
 
-
-export default function SecondFactor({ back ,email}) {
+export default function SecondFactor({ back, email }) {
   const websocket = useRef(null);
-  
+
   let remoteDescriptionSet = false;
   const candidateQueue = [];
-
-  
 
   function flushCandidateQueue() {
     while (candidateQueue.length > 0) {
@@ -22,9 +19,6 @@ export default function SecondFactor({ back ,email}) {
   const configuration = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
-  
-
-
 
   async function startConnection() {
     console.log("Starting connection...");
@@ -42,21 +36,15 @@ export default function SecondFactor({ back ,email}) {
     console.log("Offer sent.");
   }
 
-  
-
   // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
 
-  async function initialize() {
+  async function initialize() {}
+
+  async function attachVideoStream() {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { width: 1280, height: 720 }
-
+      video: { width: 1280, height: 720 },
     });
-    setCamVideoStream(stream)
-    
-  }
-
-  function attachVideoStream(stream) {
     const videoElement = document.querySelector("video");
     window.stream = stream;
     camVideo.current.srcObject = stream;
@@ -68,7 +56,7 @@ export default function SecondFactor({ back ,email}) {
 
     const message = {
       command: "readyForBandColor",
-      payload: {email}
+      payload: { email },
     };
     websocket.current.send(JSON.stringify(message));
 
@@ -83,46 +71,39 @@ export default function SecondFactor({ back ,email}) {
 
   async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-
   }
 
-  const [backgroundCol, setBackgroundCol] = useState()
-  const [bandCol, setBandCol] = useState()
-  const [bandPos, setBandPos] = useState()
-  const [instructions, setInstructions] = useState(true)
-  const [displayData, setDisplayData] = useState(null)
-  const [display, setDisplay] = useState(false)
-  const camVideo = useRef()
-  const [nextData, setNextData] = useState([])
-  const [colorIndex, setColorIndex] = useState(0)
-  const [camVideoStream, setCamVideoStream] = useState()
-  
-
-
-
+  const [backgroundCol, setBackgroundCol] = useState();
+  const [bandCol, setBandCol] = useState();
+  const [bandPos, setBandPos] = useState();
+  const [instructions, setInstructions] = useState(true);
+  const [displayData, setDisplayData] = useState(null);
+  const [display, setDisplay] = useState(false);
+  const camVideo = useRef();
+  const [nextData, setNextData] = useState([]);
+  const [colorIndex, setColorIndex] = useState(0);
 
   async function confirmColorChange() {
     console.log("Acknowledging color change");
-    let date = new Date()
+    let date = new Date();
     const information = {
       timestamp: date.toISOString(),
       backgroundColor: backgroundCol,
       stripColor: bandCol,
       stripPosition: bandPos,
-    }
+    };
 
     const message = {
       command: "ColorCommandAck",
-      payload: {information},
+      payload: { information },
     };
 
     websocket.current.send(JSON.stringify(message));
   }
 
-  
   async function changeColor() {
     let intervalId;
-  
+
     function updateColor() {
       if (display && nextData.length !== 0) {
         setBackgroundCol(nextData[0].backgroundCol);
@@ -137,29 +118,28 @@ export default function SecondFactor({ back ,email}) {
         setColorIndex(colorIndex + 1);
       }
     }
-  
+
     intervalId = setInterval(updateColor, 500);
-  
+
     return () => clearInterval(intervalId); // Cleanup function
   }
 
   const peerConnection = useRef(null);
   useEffect(() => {
+    initialize();
 
-    initialize()
-
-    if(!websocket.current){
+    if (!websocket.current) {
       websocket.current = new WebSocket("ws://localhost:8080/ws");
 
       websocket.current.onopen = e => {
         console.log("WebSocket connection established.");
         startConnection();
       };
-    
+
       websocket.current.onmessage = async e => {
         const message = JSON.parse(e.data);
         console.log("Received message:", message);
-    
+
         if (message.command === "IceAnswer") {
           const remoteDesc = new RTCSessionDescription(message.payload);
           console.log("Setting remote description...");
@@ -175,57 +155,51 @@ export default function SecondFactor({ back ,email}) {
           }
         } else if (message.command === "setBandColor") {
           if (display == false) {
-            attachVideoStream(camVideoStream)
+            await attachVideoStream();
           }
-          setDisplay(true)
+          setDisplay(true);
           setNextData(data => {
-            let clone = structuredClone(data)
-            clone.push(message.payload)
-            return clone
-          })
+            let clone = structuredClone(data);
+            clone.push(message.payload);
+            return clone;
+          });
         }
-    
       };
-    
-
-
     }
-
-    
 
     // Initialize the peer connection when the component mounts
     if (!peerConnection.current) {
-        peerConnection.current = new RTCPeerConnection(configuration);
+      peerConnection.current = new RTCPeerConnection(configuration);
 
-        
-        let dataChannel = peerConnection.current.createDataChannel("myDataChannel");
+      let dataChannel =
+        peerConnection.current.createDataChannel("myDataChannel");
 
-        peerConnection.current.onicecandidate = event => {
-          if (event.candidate) {
-            console.log("Sending new ICE candidate...");
-            websocket.current.send(
-              JSON.stringify({
-                command: "IceCandidate",
-                payload: event.candidate.toJSON(),
-              }),
-            );
-          } else {
-            console.log("ICE gathering complete.");
-          }
-        };
-    
-        peerConnection.current.onconnectionstatechange = event => {
-          console.log("Connection state change:", peerConnection.current.connectionState);
-        };
-        
-        changeColor()
-        
-        // Additional setup like handling incoming data channels or streams
+      peerConnection.current.onicecandidate = event => {
+        if (event.candidate) {
+          console.log("Sending new ICE candidate...");
+          websocket.current.send(
+            JSON.stringify({
+              command: "IceCandidate",
+              payload: event.candidate.toJSON(),
+            }),
+          );
+        } else {
+          console.log("ICE gathering complete.");
+        }
+      };
+
+      peerConnection.current.onconnectionstatechange = event => {
+        console.log(
+          "Connection state change:",
+          peerConnection.current.connectionState,
+        );
+      };
+
+      changeColor();
+
+      // Additional setup like handling incoming data channels or streams
     }
-        
-        
-  },[])
-  
+  }, []);
 
   return (
     <>
