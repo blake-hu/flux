@@ -6,45 +6,11 @@ import next from 'next';
 
 export default function SecondFactor({ back ,email}) {
   const websocket = useRef(null);
-  websocket.current.onopen = e => {
-    console.log("WebSocket connection established.");
-    startConnection();
-  };
-
+  
   let remoteDescriptionSet = false;
   const candidateQueue = [];
 
-  websocket.current.onmessage = async e => {
-    const message = JSON.parse(e.data);
-    console.log("Received message:", message);
-
-    if (message.command === "IceAnswer") {
-      const remoteDesc = new RTCSessionDescription(message.payload);
-      console.log("Setting remote description...");
-      await peerConnection.current.setRemoteDescription(remoteDesc);
-      remoteDescriptionSet = true;
-      flushCandidateQueue();
-    } else if (message.command === "IceCandidate") {
-      const candidate = new RTCIceCandidate(message.payload);
-      if (remoteDescriptionSet) {
-        await peerConnection.current.addIceCandidate(candidate);
-      } else {
-        candidateQueue.push(candidate);
-      }
-    } else if (message.command === "setBandColor") {
-      if (display == false) {
-        attachVideoStream(camVideoStream)
-      }
-      setDisplay(true)
-      setNextData(data => {
-        let clone = structuredClone(data)
-        clone.push(message.payload)
-        return clone
-      })
-    }
-
-  };
-
+  
 
   function flushCandidateQueue() {
     while (candidateQueue.length > 0) {
@@ -198,6 +164,43 @@ export default function SecondFactor({ back ,email}) {
 
     if(!websocket.current){
       websocket.current = new WebSocket("ws://localhost:8080/ws");
+
+      websocket.current.onopen = e => {
+        console.log("WebSocket connection established.");
+        startConnection();
+      };
+    
+      websocket.current.onmessage = async e => {
+        const message = JSON.parse(e.data);
+        console.log("Received message:", message);
+    
+        if (message.command === "IceAnswer") {
+          const remoteDesc = new RTCSessionDescription(message.payload);
+          console.log("Setting remote description...");
+          await peerConnection.current.setRemoteDescription(remoteDesc);
+          remoteDescriptionSet = true;
+          flushCandidateQueue();
+        } else if (message.command === "IceCandidate") {
+          const candidate = new RTCIceCandidate(message.payload);
+          if (remoteDescriptionSet) {
+            await peerConnection.current.addIceCandidate(candidate);
+          } else {
+            candidateQueue.push(candidate);
+          }
+        } else if (message.command === "setBandColor") {
+          if (display == false) {
+            attachVideoStream(camVideoStream)
+          }
+          setDisplay(true)
+          setNextData(data => {
+            let clone = structuredClone(data)
+            clone.push(message.payload)
+            return clone
+          })
+        }
+    
+      };
+    
 
 
     }
