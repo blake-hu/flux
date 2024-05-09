@@ -5,8 +5,8 @@ import next from 'next';
 
 
 export default function SecondFactor({ back ,email}) {
-  const websocket = new WebSocket("ws://localhost:8080/ws");
-  websocket.onopen = e => {
+  const websocket = useRef(null);
+  websocket.current.onopen = e => {
     console.log("WebSocket connection established.");
     startConnection();
   };
@@ -14,7 +14,7 @@ export default function SecondFactor({ back ,email}) {
   let remoteDescriptionSet = false;
   const candidateQueue = [];
 
-  websocket.onmessage = async e => {
+  websocket.current.onmessage = async e => {
     const message = JSON.parse(e.data);
     console.log("Received message:", message);
 
@@ -53,14 +53,6 @@ export default function SecondFactor({ back ,email}) {
     }
   }
 
-  websocket.onerror = error => {
-    console.error("WebSocket Error:", error);
-  };
-
-  websocket.onclose = event => {
-    console.log("WebSocket Closed:", event.reason);
-  };
-
   const configuration = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
@@ -80,7 +72,7 @@ export default function SecondFactor({ back ,email}) {
       command: "IceOffer",
       payload: peerConnection.current.localDescription,
     };
-    websocket.send(JSON.stringify(message));
+    websocket.current.send(JSON.stringify(message));
     console.log("Offer sent.");
   }
 
@@ -98,7 +90,7 @@ export default function SecondFactor({ back ,email}) {
     peerConnection.current.onicecandidate = event => {
       if (event.candidate) {
         console.log("Sending new ICE candidate...");
-        websocket.send(
+        websocket.current.send(
           JSON.stringify({
             command: "IceCandidate",
             payload: event.candidate.toJSON(),
@@ -128,7 +120,7 @@ export default function SecondFactor({ back ,email}) {
       command: "readyForBandColor",
       payload: {email}
     };
-    websocket.send(JSON.stringify(message));
+    websocket.current.send(JSON.stringify(message));
 
     readyTimeout();
   }
@@ -154,7 +146,7 @@ export default function SecondFactor({ back ,email}) {
   const [nextData, setNextData] = useState([])
   const [colorIndex, setColorIndex] = useState(0)
   const [camVideoStream, setCamVideoStream] = useState()
-  changeColor()
+  
 
 
 
@@ -174,7 +166,7 @@ export default function SecondFactor({ back ,email}) {
       payload: {information},
     };
 
-    websocket.send(JSON.stringify(message));
+    websocket.current.send(JSON.stringify(message));
   }
 
   
@@ -204,15 +196,22 @@ export default function SecondFactor({ back ,email}) {
   const peerConnection = useRef(null);
   useEffect(() => {
 
+    if(!websocket.current){
+      websocket.current = new WebSocket("ws://localhost:8080/ws");
+
+
+    }
+
     
 
     // Initialize the peer connection when the component mounts
     if (!peerConnection.current) {
-        peerConnection.current = new RTCPeerConnection();
+        peerConnection.current = new RTCPeerConnection(configuration);
 
         initialize()
         let dataChannel = peerConnection.current.createDataChannel("myDataChannel");
         
+        changeColor()
         
         // Additional setup like handling incoming data channels or streams
     }
