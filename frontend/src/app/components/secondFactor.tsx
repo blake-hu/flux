@@ -125,7 +125,7 @@ export default function SecondFactor({ back ,email}) {
 
     const message = {
       command: "readyForBandColor",
-      email: email
+      payload: {email}
     };
     websocket.send(JSON.stringify(message));
 
@@ -170,7 +170,7 @@ export default function SecondFactor({ back ,email}) {
 
     const message = {
       command: "ColorCommandAck",
-      payload: information,
+      payload: {information},
     };
 
     websocket.send(JSON.stringify(message));
