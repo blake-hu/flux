@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Button from "@mui/material/Button";
 import "./style.css";
-import next from "next";
 
 function useInterval(callback, delay) {
   const savedCallback = useRef();
@@ -23,7 +22,7 @@ function useInterval(callback, delay) {
   }, [delay]);
 }
 
-export default function SecondFactor({ back, email }) {
+export default function SecondFactor({ next, email }) {
   const websocket = useRef(null);
 
   let remoteDescriptionSet = false;
@@ -197,6 +196,10 @@ export default function SecondFactor({ back, email }) {
             // console.log(clone);
             return clone;
           });
+        } else if(message.command === "authenticationResult"){
+          if(message.payload.success){
+            next();
+          }
         }
       };
     }
