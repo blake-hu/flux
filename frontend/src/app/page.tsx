@@ -40,7 +40,7 @@ export default function Home() {
 
   const [firstSuccess, setFirstSuccess] = useState(false);
 
-  const elements = [<FirstFactor next = {next} email={email} setEmail={setEmail}/>, <SecondFactor back={back} email={email}/>, <Success next={next}/>]
+  const elements = [<FirstFactor next = {next} email={email} setEmail={setEmail}/>, <SecondFactor next={next} email={email}/>, <Success />]
   return (
     <div>
       {elements[currentStepNumber]}
