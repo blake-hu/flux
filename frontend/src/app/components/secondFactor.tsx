@@ -21,13 +21,13 @@ export default function SecondFactor({ back ,email}) {
     if (message.command === "IceAnswer") {
       const remoteDesc = new RTCSessionDescription(message.payload);
       console.log("Setting remote description...");
-      await peerConnection.setRemoteDescription(remoteDesc);
+      await peerConnection.current.setRemoteDescription(remoteDesc);
       remoteDescriptionSet = true;
       flushCandidateQueue();
     } else if (message.command === "IceCandidate") {
       const candidate = new RTCIceCandidate(message.payload);
       if (remoteDescriptionSet) {
-        await peerConnection.addIceCandidate(candidate);
+        await peerConnection.current.addIceCandidate(candidate);
       } else {
         candidateQueue.push(candidate);
       }
@@ -49,7 +49,7 @@ export default function SecondFactor({ back ,email}) {
   function flushCandidateQueue() {
     while (candidateQueue.length > 0) {
       const candidate = candidateQueue.pop();
-      peerConnection.addIceCandidate(candidate);
+      peerConnection.current.addIceCandidate(candidate);
     }
   }
 
@@ -70,15 +70,15 @@ export default function SecondFactor({ back ,email}) {
 
   async function startConnection() {
     console.log("Starting connection...");
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
+    const offer = await peerConnection.current.createOffer();
+    await peerConnection.current.setLocalDescription(offer);
     sendOffer();
   }
 
   function sendOffer() {
     const message = {
       command: "IceOffer",
-      payload: peerConnection.localDescription,
+      payload: peerConnection.current.localDescription,
     };
     websocket.send(JSON.stringify(message));
     console.log("Offer sent.");
@@ -95,7 +95,7 @@ export default function SecondFactor({ back ,email}) {
 
     });
     setCamVideoStream(stream)
-    peerConnection.onicecandidate = event => {
+    peerConnection.current.onicecandidate = event => {
       if (event.candidate) {
         console.log("Sending new ICE candidate...");
         websocket.send(
@@ -109,8 +109,8 @@ export default function SecondFactor({ back ,email}) {
       }
     };
 
-    peerConnection.onconnectionstatechange = event => {
-      console.log("Connection state change:", peerConnection.connectionState);
+    peerConnection.current.onconnectionstatechange = event => {
+      console.log("Connection state change:", peerConnection.current.connectionState);
     };
   }
 
@@ -118,7 +118,7 @@ export default function SecondFactor({ back ,email}) {
     const videoElement = document.querySelector("video");
     window.stream = stream;
     camVideo.current.srcObject = stream;
-    peerConnection.addTrack(stream.getVideoTracks()[0], stream);
+    peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
   }
 
   function closeInstruction(e) {
@@ -135,7 +135,7 @@ export default function SecondFactor({ back ,email}) {
 
   async function readyTimeout() {
     await sleep(10000);
-    peerConnection.close();
+    peerConnection.current.close();
     console.log("connection Closed");
   }
 
