@@ -11,4 +11,4 @@ import os
 import shutil
 import random
 
-_all__ = ['process', 'inference']
+_all__ = ['process', 'infer'] # rename inference (same name as module)
