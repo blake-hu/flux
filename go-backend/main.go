@@ -217,7 +217,11 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println("Invalid payload for ReadyForBandColor")
 				return
 			}
-			email = payload.Email
+			session, exists := app.sessionManager.GetSession(sessionId)
+			if !exists {
+				return
+			}
+			session.Email = payload.Email
 
 			colors := [3]string{"red", "green", "blue"}
 			// TODO: seeding this off time can be unsecure
@@ -226,7 +230,10 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				const stripPercentMax = 90
 				const stripPercentMin = 10
 				backgroundColor := colors[rng.Int()%len(colors)]
-				stripColor := colors[rng.Int()%len(colors)]
+				var stripColor = colors[rng.Int()%len(colors)]
+				for stripColor == backgroundColor {
+					stripColor = colors[rng.Int()%len(colors)]
+				}
 				stripPosition := rng.Intn(stripPercentMax-stripPercentMin) + stripPercentMin
 
 				colorMsg, err := MarshalWsMessage(WsMessage{
@@ -240,10 +247,6 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 					return err
 				}
 
-				session, exists := app.sessionManager.GetSession(sessionId)
-				if !exists {
-					return fmt.Errorf("session does not exist")
-				}
 				session.SentColorCommands = append(session.SentColorCommands, StoredColorCommand{
 					BackgroundColor: backgroundColor,
 					StripColor:      stripColor,
@@ -317,6 +320,18 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 
 				// make http request with csv file and video file
 
+				// send authenticationResult
+				msg, err := MarshalWsMessage(WsMessage{
+					Command: AuthenticationResult,
+					Payload: AuthenticationResultPayload{
+						Success: true,
+					},
+				})
+				if err != nil {
+					log.Printf("Failed to marshal authentication result: %s", err.Error())
+					return
+				}
+				ws.WriteMessage(websocket.TextMessage, []byte(msg))
 			}
 		}
 	}

@@ -99,8 +99,7 @@ export default function SecondFactor({ next, email }) {
   const [nextData, setNextData] = useState<any>([]);
   const [colorIndex, setColorIndex] = useState(0);
 
-  async function confirmColorChange() {
-    console.log("Acknowledging color change");
+  const confirmColorChange = useCallback(() => {
     let date = new Date();
     const information = {
       timestamp: date.toISOString(),
@@ -112,11 +111,11 @@ export default function SecondFactor({ next, email }) {
 
     const message = {
       command: "colorCommandAck",
-      payload: { information },
+      payload: information,
     };
 
     websocket.current.send(JSON.stringify(message));
-  }
+  }, [backgroundCol, bandCol, bandPos, colorIndex]);
 
   // const updateColor = useCallback(() => {
 
@@ -138,7 +137,7 @@ export default function SecondFactor({ next, email }) {
   useInterval(() => {
     if (display && nextData.length !== 0) {
       setBackgroundCol(nextData[0].backgroundColor);
-      setBandPos(nextData[0].stripPosition+"%");
+      setBandPos(nextData[0].stripPosition + "%");
       setBandCol(nextData[0].stripColor);
       confirmColorChange();
       setNextData((data: any) => {
@@ -146,7 +145,7 @@ export default function SecondFactor({ next, email }) {
         clone.shift();
         return clone;
       });
-      setColorIndex(colorIndex + 1);
+      setColorIndex(idx => idx + 1);
     }
   }, 500);
 
@@ -196,8 +195,9 @@ export default function SecondFactor({ next, email }) {
             // console.log(clone);
             return clone;
           });
-        } else if(message.command === "authenticationResult"){
-          if(message.payload.success){
+        } else if (message.command === "authenticationResult") {
+          console.log("Eiquwehiuqwheiuqhiuhiwehriuwehriwehriwh");
+          if (message.payload.success) {
             next();
           }
         }

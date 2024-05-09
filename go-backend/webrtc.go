@@ -60,6 +60,7 @@ type Session struct {
 	PeerConnection    *webrtc.PeerConnection
 	WebSocket         *websocket.Conn
 	SentColorCommands []StoredColorCommand
+	Email             string
 }
 
 type SessionManager struct {

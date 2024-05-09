@@ -15,7 +15,12 @@ const (
 	CommandSetBandColor      Command = "setBandColor"
 	CommandReadyForBandColor Command = "readyForBandColor"
 	ColorCommandAck          Command = "colorCommandAck"
+	AuthenticationResult     Command = "authenticationResult"
 )
+
+type AuthenticationResultPayload struct {
+	Success bool `json:"success"`
+}
 
 type ReadyForBandColorPayload struct {
 	Email string `json:"email"`
