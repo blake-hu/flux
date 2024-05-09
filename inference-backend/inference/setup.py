@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='inference',  # Replace 'your_module' with the name of your module
-    version='1.0.0',  # Specify the version of your module
+    version='1.0.1',  # Specify the version of your module
     author='Your Name',  # Replace 'Your Name' with your name or the author name
     author_email='your@email.com',  # Replace 'your@email.com' with your email
     description='A short description of your module',  # Add a short description

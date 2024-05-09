@@ -71,4 +71,4 @@ def color_change(color_change_csv):
     color_changes.iloc[:, 1] = color_changes.iloc[:, 1].apply(map_colors)
     color_changes.iloc[:, 2] = color_changes.iloc[:, 2].apply(remove_percent)
     color_changes.iloc[:, 3] = color_changes.iloc[:, 3] - color_changes.iloc[0, 3]
-    ## not done
+    return color_changes

@@ -33,11 +33,9 @@ def split_video(input_video, output_directory1):
 
         vidcap.release()
 
-        frametime_list = np.array(frametime_list)
+        # frametime_list = np.array(frametime_list)
 
         print(f"Video frames saved in '{output_directory1}'")
-
-    return frametime_list
 
 def crop_frames(frames, output_directory1):
     # CONVERT FRAMES INTO CROPPED FRAMES
