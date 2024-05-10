@@ -182,7 +182,11 @@ export default function SecondFactor({ next, email }) {
           }
         } else if (message.command === "setBandColor") {
           if (message.payload.index === 0) {
-            peerConnection.current.addTrack(camVideo.current.srcObject.getVideoTracks()[0], camVideo.current.srcObject);
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: { width: 1280, height: 720 },
+            });
+            peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
 
           }
 
