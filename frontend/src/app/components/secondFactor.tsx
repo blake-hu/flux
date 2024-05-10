@@ -62,6 +62,8 @@ export default function SecondFactor({ next, email }) {
       audio: false,
       video: { width: 1280, height: 720 },
     });
+    window.stream =stream;
+    
     camVideo.current.srcObject = stream;
   }
 
@@ -74,8 +76,6 @@ export default function SecondFactor({ next, email }) {
     };
     await attachVideoStream();
     websocket.current.send(JSON.stringify(message));
-    
-
     readyTimeout();
   }
 
