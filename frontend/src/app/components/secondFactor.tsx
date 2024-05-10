@@ -22,7 +22,7 @@ function useInterval(callback, delay) {
   }, [delay]);
 }
 
-export default function SecondFactor({ next, email }) {
+export default function SecondFactor({ success, failure, email }) {
   const websocket = useRef(null);
 
   let remoteDescriptionSet = false;
@@ -202,7 +202,10 @@ export default function SecondFactor({ next, email }) {
           } else if (message.command === "authenticationResult") {
             console.log("Eiquwehiuqwheiuqhiuhiwehriuwehriwehriwh");
             if (message.payload.success) {
-              next();
+              success();
+            }
+            else {
+              failure();
             }
           }
         };

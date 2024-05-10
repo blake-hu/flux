@@ -108,10 +108,27 @@
     color:lightgreen;
     text-align: center;
     display:block;
-    font-size: 25px;
+    font-size: 40px;
     font-family: "Inter-Regular", Helvetica;
-
+    padding-top: 45%;
 }
+
+.failureOutlineBorder{
+    background-color: #ffffff;
+    border: 2px solid;
+    border-color: red;
+    border-radius: 15px;
+    height: 568px;
+    width: 500px;
+    margin: auto;
+    color:red;
+    text-align: center;
+    display:block;
+    font-size: 40px;
+    font-family: "Inter-Regular", Helvetica;
+    padding-top: 35%;
+}
+
 
 .instructionPopup{
     border-radius: 22px;

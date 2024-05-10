@@ -1,4 +1,5 @@
 "use client";
+import Failure from "./components/failure";
 import FirstFactor from "./components/firstFactor";
 import SecondFactor from "./components/secondFactor";
 import Success from "./components/success";
@@ -26,6 +27,14 @@ export default function Home() {
     })
   }
 
+  function success(){
+    setCurrentStepNumber(2);
+  }
+
+  function failure(){
+    setCurrentStepNumber(3);
+  }
+
   function goTo(number:number){
       setCurrentStepNumber(number)
   }
@@ -40,10 +49,11 @@ export default function Home() {
 
   const [firstSuccess, setFirstSuccess] = useState(false);
 
-  const elements = [<FirstFactor next = {next} email={email} setEmail={setEmail}/>, <SecondFactor next={next} email={email}/>, <Success />]
+  const elements = [<FirstFactor next = {next} email={email} setEmail={setEmail}/>, <SecondFactor success={success} failure={failure} email={email}/>, <Success />, <Failure />]
   return (
     <div>
       {elements[currentStepNumber]}
+ 
     </div>
   );
 }
