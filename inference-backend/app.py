@@ -8,6 +8,8 @@ import os
 from inference import process, calculate, infer
 import pickle
 import csv
+import joblib
+import ffmpeg
 
 app = Flask(__name__)
 vgg_model = DeepFace.build_model('VGG-Face')
@@ -45,30 +47,45 @@ def liveness_detection():
     if not json_data or 'sessionId' not in json_data:
         return jsonify({'error': 'No sessionId provided'})
 
+    if 'start_offset' not in json_data:
+        return jsonify({'error': 'No start_offset provided'})
+
     session_id = json_data['sessionId']
 
-    video_path = os.path.join('video', session_id + '.mp4')
-    csv_path = os.path.join('csv', session_id + '.csv')
-    frames_path = os.path.join('frames', session_id)
-    lr_model_path = "/path/to/your/lr_model.pkl"
+    video_path = os.path.join('./files/video', session_id + '.ivf')
+    cropped_video_path = os.path.join('./files/video', session_id + '.mp4')
+    csv_path = os.path.join('./files/csv', session_id + '.csv')
+    frames_path = os.path.join('frames/video', session_id)
+    cropped_path = os.path.join('frames/cropped', session_id)
+    lr_model_path = "model.joblib" # TODO (change model path)
+
+    # integer in micro seconds 10^-6
+    delete_duration = json_data['start_offset']/1000000
 
     if not os.path.exists(lr_model_path):
         return jsonify({'error': 'LR model does not exist'})
 
     try:
         if os.path.exists(video_path) and os.path.exists(csv_path):
+
+            # convert ivf to mp4 and crop delete_duration off the beginning of the video
+            ffmpeg.input(video_path).output(cropped_video_path).run()
+
             # Load the model from the file
-            with open(lr_model_path, 'rb') as f:
-                lr_model = pickle.load(f)
+            lr_model = joblib.load(lr_model_path)
 
             # split video into frames
-            process.split_video(video_path, frames_path)
+            process.split_video(cropped_video_path, frames_path, delete_duration)
             # crop frames
-            process.crop_frames(frames_path, frames_path)
+            success = process.crop_frames(cropped_path, frames_path)
+            if not success:
+                # change return
+                return jsonify({'error': 'Could not detect face'})
+
             # find color changes
             color_changes = calculate.color_change(csv_path)
             # liveness detection
-            success = infer.predict_liveliness(csv_path, frames_path, color_changes, lr_model)
+            success = infer.predict_liveliness(csv_path, cropped_path, color_changes, lr_model)
 
             if not success:
                 return jsonify({'authenticated': False, 'embedding': None})
@@ -81,6 +98,7 @@ def liveness_detection():
     try:
         random_image = process.get_random_frame(video_path)
         embedding = infer.generate_embedding(random_image)
+
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'})
 

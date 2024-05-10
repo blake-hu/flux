@@ -62,7 +62,8 @@ def map_colors(color):
 
 
 def remove_percent(s):
-    return float("0." + s[:-1])
+    # return float("0." + s[:-1])
+    return float(s/100)
 
 
 def color_change(color_change_csv):

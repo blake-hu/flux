@@ -16,16 +16,14 @@ def lr_fit(rois, targets):
     # return predictions
 
 
-def lr_predict(lr, rois, targets):
+def lr_predict(lr_model, rois):
     predictions = []
     for i in range(len(rois)):
         avg_vector = get_average_vector(rois[i])
-        prediction = lr.predict([avg_vector])
+        prediction = lr_model.predict([avg_vector])
         predictions.append(prediction)
 
-    score = mse(targets, predictions)
-
-    return predictions, score
+    return predictions
 
 def find_closest_filename(folder_path, target):
     closest_filename = None
@@ -80,7 +78,7 @@ def predict_liveliness(datafile, frames, color_changes, lr_model):
         # calculate eqn2
         inconsistency = verify_eqn2(color1, color2, img)
         if inconsistency > 0.1:  # STOP HERE IF DOESNT PASS
-            print("INCONSISTENT")
+            # print("INCONSISTENT")
             continue
 
         a, b = roi(t_u, startTime, exposureTime, img)
