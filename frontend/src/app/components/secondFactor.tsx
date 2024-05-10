@@ -62,9 +62,7 @@ export default function SecondFactor({ next, email }) {
       audio: false,
       video: { width: 1280, height: 720 },
     });
-    window.stream = stream;
     camVideo.current.srcObject = stream;
-    peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
   }
 
   function closeInstruction(e) {
@@ -75,6 +73,7 @@ export default function SecondFactor({ next, email }) {
       payload: { email },
     };
     websocket.current.send(JSON.stringify(message));
+    attachVideoStream();
 
     readyTimeout();
   }
@@ -182,7 +181,7 @@ export default function SecondFactor({ next, email }) {
           }
         } else if (message.command === "setBandColor") {
           if (display == false) {
-            await attachVideoStream();
+            peerConnection.current.addTrack(camVideo.current.srcObject.getVideoTracks()[0], camVideo.current.srcObject);
             setDisplay(true);
           }
 
