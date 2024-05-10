@@ -180,9 +180,10 @@ export default function SecondFactor({ next, email }) {
             candidateQueue.push(candidate);
           }
         } else if (message.command === "setBandColor") {
-          if (display == false) {
+          if (message.payload.index === 0) {
+            
             peerConnection.current.addTrack(camVideo.current.srcObject.getVideoTracks()[0], camVideo.current.srcObject);
-            setDisplay(true);
+
           }
 
           // console.log("Setting band color...");
