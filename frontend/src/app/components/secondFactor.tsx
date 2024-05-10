@@ -65,15 +65,16 @@ export default function SecondFactor({ next, email }) {
     camVideo.current.srcObject = stream;
   }
 
-  function closeInstruction(e) {
+  async function closeInstruction(e) {
     setInstructions(false);
 
     const message = {
       command: "readyForBandColor",
       payload: { email },
     };
+    await attachVideoStream();
     websocket.current.send(JSON.stringify(message));
-    attachVideoStream();
+    
 
     readyTimeout();
   }
@@ -181,7 +182,6 @@ export default function SecondFactor({ next, email }) {
           }
         } else if (message.command === "setBandColor") {
           if (message.payload.index === 0) {
-            
             peerConnection.current.addTrack(camVideo.current.srcObject.getVideoTracks()[0], camVideo.current.srcObject);
 
           }
