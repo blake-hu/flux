@@ -57,8 +57,6 @@ export default function SecondFactor({ next, email }) {
 
   // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
 
-
-
   async function closeInstruction(e) {
     setInstructions(false);
 
@@ -66,7 +64,6 @@ export default function SecondFactor({ next, email }) {
       email: email,
       initialTime: videoAdded,
     };
-
 
     const message = {
       command: "readyForBandColor",
@@ -111,7 +108,6 @@ export default function SecondFactor({ next, email }) {
     const message = {
       command: "colorCommandAck",
       payload: information,
-
     };
 
     websocket.current.send(JSON.stringify(message));
@@ -151,25 +147,64 @@ export default function SecondFactor({ next, email }) {
 
   const peerConnection = useRef(null);
   useEffect(() => {
-
     (async () => {
+      // Initialize the peer connection when the component mounts
+      if (!peerConnection.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { width: 1280, height: 720 },
+        });
+        window.stream = stream;
+        camVideo.current.srcObject = stream;
+        new RTCPeerConnection(configuration);
+        peerConnection.current = new RTCPeerConnection(configuration);
 
+        let dataChannel =
+          peerConnection.current.createDataChannel("myDataChannel");
+
+        let time = new Date();
+        setVideoAdded(time.toISOString());
+        peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
+        console.log("Added video track to peer connection.");
+        console.log(peerConnection.current.getSenders()[0].track);
+
+        peerConnection.current.onicecandidate = event => {
+          if (event.candidate) {
+            console.log("Sending new ICE candidate...");
+            websocket.current.send(
+              JSON.stringify({
+                command: "IceCandidate",
+                payload: event.candidate.toJSON(),
+              }),
+            );
+          } else {
+            console.log("ICE gathering complete.");
+          }
+        };
+
+        peerConnection.current.onconnectionstatechange = event => {
+          console.log(
+            "Connection state change:",
+            peerConnection.current.connectionState,
+          );
+        };
+      }
       if (!websocket.current) {
         websocket.current = new WebSocket("ws://localhost:8080/ws");
-  
+
         websocket.current.onclose = e => {
           console.log("WebSocket connection closed.");
         };
-  
+
         websocket.current.onopen = e => {
           console.log("WebSocket connection established.");
           startConnection();
         };
-  
+
         websocket.current.onmessage = async e => {
           const message = JSON.parse(e.data);
           console.log("Received message:", message);
-  
+
           if (message.command === "IceAnswer") {
             const remoteDesc = new RTCSessionDescription(message.payload);
             console.log("Setting remote description...");
@@ -185,17 +220,15 @@ export default function SecondFactor({ next, email }) {
             }
           } else if (message.command === "setBandColor") {
             if (message.payload.index === 0) {
-              
               setDisplay(true);
-  
             }
-  
+
             // console.log("Setting band color...");
             setNextData(data => {
               let clone = structuredClone(data);
               // console.log("pushing", message.payload);
               clone.push(message.payload);
-  
+
               // console.log(clone);
               return clone;
             });
@@ -207,53 +240,7 @@ export default function SecondFactor({ next, email }) {
           }
         };
       }
-  
-      // Initialize the peer connection when the component mounts
-      if (!peerConnection.current) {
-  
-        
-        peerConnection.current = new RTCPeerConnection(configuration);
-  
-        let dataChannel =
-          peerConnection.current.createDataChannel("myDataChannel");
-
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: { width: 1280, height: 720 },
-          });
-          window.stream =stream;
-          camVideo.current.srcObject = stream;
-
-          let time = new Date();
-          setVideoAdded(time.toISOString());
-          peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
-
-        peerConnection.current.onicecandidate = event => {
-          if (event.candidate) {
-            console.log("Sending new ICE candidate...");
-            websocket.current.send(
-              JSON.stringify({
-                command: "IceCandidate",
-                payload: event.candidate.toJSON(),
-              }),
-            );
-          } else {
-            console.log("ICE gathering complete.");
-          }
-        };
-  
-        peerConnection.current.onconnectionstatechange = event => {
-          console.log(
-            "Connection state change:",
-            peerConnection.current.connectionState,
-          );
-        };
-      }
-       
-
     })();
-    
-    
   }, []);
 
   return (

@@ -61,6 +61,7 @@ type Session struct {
 	WebSocket         *websocket.Conn
 	SentColorCommands []StoredColorCommand
 	Email             string
+	InitialTime       time.Time
 }
 
 type SessionManager struct {
