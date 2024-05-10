@@ -57,24 +57,22 @@ export default function SecondFactor({ next, email }) {
 
   // document.querySelector("#showVideo").addEventListener("click", e => initialize(e))
 
-  async function attachVideoStream() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { width: 1280, height: 720 },
-    });
-    window.stream =stream;
-    
-    camVideo.current.srcObject = stream;
-  }
+
 
   async function closeInstruction(e) {
     setInstructions(false);
 
+    const payload = {
+      email: email,
+      initialTime: videoAdded,
+    };
+
+
     const message = {
       command: "readyForBandColor",
-      payload: { email },
+      payload: payload,
     };
-    await attachVideoStream();
+
     websocket.current.send(JSON.stringify(message));
     readyTimeout();
   }
@@ -98,6 +96,7 @@ export default function SecondFactor({ next, email }) {
   const camVideo = useRef();
   const [nextData, setNextData] = useState<any>([]);
   const [colorIndex, setColorIndex] = useState(0);
+  const [videoAdded, setVideoAdded] = useState("");
 
   const confirmColorChange = useCallback(() => {
     let date = new Date();
@@ -112,6 +111,7 @@ export default function SecondFactor({ next, email }) {
     const message = {
       command: "colorCommandAck",
       payload: information,
+
     };
 
     websocket.current.send(JSON.stringify(message));
@@ -151,93 +151,109 @@ export default function SecondFactor({ next, email }) {
 
   const peerConnection = useRef(null);
   useEffect(() => {
-    if (!websocket.current) {
-      websocket.current = new WebSocket("ws://localhost:8080/ws");
 
-      websocket.current.onclose = e => {
-        console.log("WebSocket connection closed.");
-      };
+    (async () => {
 
-      websocket.current.onopen = e => {
-        console.log("WebSocket connection established.");
-        startConnection();
-      };
-
-      websocket.current.onmessage = async e => {
-        const message = JSON.parse(e.data);
-        console.log("Received message:", message);
-
-        if (message.command === "IceAnswer") {
-          const remoteDesc = new RTCSessionDescription(message.payload);
-          console.log("Setting remote description...");
-          await peerConnection.current.setRemoteDescription(remoteDesc);
-          remoteDescriptionSet = true;
-          flushCandidateQueue();
-        } else if (message.command === "IceCandidate") {
-          const candidate = new RTCIceCandidate(message.payload);
-          if (remoteDescriptionSet) {
-            await peerConnection.current.addIceCandidate(candidate);
-          } else {
-            candidateQueue.push(candidate);
-          }
-        } else if (message.command === "setBandColor") {
-          if (message.payload.index === 0) {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              audio: false,
-              video: { width: 1280, height: 720 },
+      if (!websocket.current) {
+        websocket.current = new WebSocket("ws://localhost:8080/ws");
+  
+        websocket.current.onclose = e => {
+          console.log("WebSocket connection closed.");
+        };
+  
+        websocket.current.onopen = e => {
+          console.log("WebSocket connection established.");
+          startConnection();
+        };
+  
+        websocket.current.onmessage = async e => {
+          const message = JSON.parse(e.data);
+          console.log("Received message:", message);
+  
+          if (message.command === "IceAnswer") {
+            const remoteDesc = new RTCSessionDescription(message.payload);
+            console.log("Setting remote description...");
+            await peerConnection.current.setRemoteDescription(remoteDesc);
+            remoteDescriptionSet = true;
+            flushCandidateQueue();
+          } else if (message.command === "IceCandidate") {
+            const candidate = new RTCIceCandidate(message.payload);
+            if (remoteDescriptionSet) {
+              await peerConnection.current.addIceCandidate(candidate);
+            } else {
+              candidateQueue.push(candidate);
+            }
+          } else if (message.command === "setBandColor") {
+            if (message.payload.index === 0) {
+              
+              setDisplay(true);
+  
+            }
+  
+            // console.log("Setting band color...");
+            setNextData(data => {
+              let clone = structuredClone(data);
+              // console.log("pushing", message.payload);
+              clone.push(message.payload);
+  
+              // console.log(clone);
+              return clone;
             });
-            peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
-
+          } else if (message.command === "authenticationResult") {
+            console.log("Eiquwehiuqwheiuqhiuhiwehriuwehriwehriwh");
+            if (message.payload.success) {
+              next();
+            }
           }
+        };
+      }
+  
+      // Initialize the peer connection when the component mounts
+      if (!peerConnection.current) {
+  
+        
+        peerConnection.current = new RTCPeerConnection(configuration);
+  
+        let dataChannel =
+          peerConnection.current.createDataChannel("myDataChannel");
 
-          // console.log("Setting band color...");
-          setNextData(data => {
-            let clone = structuredClone(data);
-            // console.log("pushing", message.payload);
-            clone.push(message.payload);
-
-            // console.log(clone);
-            return clone;
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { width: 1280, height: 720 },
           });
-        } else if (message.command === "authenticationResult") {
-          console.log("Eiquwehiuqwheiuqhiuhiwehriuwehriwehriwh");
-          if (message.payload.success) {
-            next();
+          window.stream =stream;
+          camVideo.current.srcObject = stream;
+
+          let time = new Date();
+          setVideoAdded(time.toISOString());
+          peerConnection.current.addTrack(stream.getVideoTracks()[0], stream);
+
+        peerConnection.current.onicecandidate = event => {
+          if (event.candidate) {
+            console.log("Sending new ICE candidate...");
+            websocket.current.send(
+              JSON.stringify({
+                command: "IceCandidate",
+                payload: event.candidate.toJSON(),
+              }),
+            );
+          } else {
+            console.log("ICE gathering complete.");
           }
-        }
-      };
-    }
-
-    // Initialize the peer connection when the component mounts
-    if (!peerConnection.current) {
-      peerConnection.current = new RTCPeerConnection(configuration);
-
-      let dataChannel =
-        peerConnection.current.createDataChannel("myDataChannel");
-
-      peerConnection.current.onicecandidate = event => {
-        if (event.candidate) {
-          console.log("Sending new ICE candidate...");
-          websocket.current.send(
-            JSON.stringify({
-              command: "IceCandidate",
-              payload: event.candidate.toJSON(),
-            }),
+        };
+  
+        peerConnection.current.onconnectionstatechange = event => {
+          console.log(
+            "Connection state change:",
+            peerConnection.current.connectionState,
           );
-        } else {
-          console.log("ICE gathering complete.");
-        }
-      };
+        };
+      }
+       
 
-      peerConnection.current.onconnectionstatechange = event => {
-        console.log(
-          "Connection state change:",
-          peerConnection.current.connectionState,
-        );
-      };
-
-      // Additional setup like handling incoming data channels or streams
-    }
+    })();
+    
+    
   }, []);
 
   return (
