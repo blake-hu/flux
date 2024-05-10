@@ -66,3 +66,17 @@ def crop_frames(frames, output_directory1):
             # frame_name = f"frame_{frame_count:04d}.jpg"
             frame_path = os.path.join(frames, filename)
             cv2.imwrite(frame_path, img)
+
+def get_random_frame(video_file):
+    cap = cv2.VideoCapture(video_file)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    random_frame_index = random.randint(0, total_frames - 1)
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, random_frame_index)
+    ret, frame = cap.read()
+    if ret:
+        return frame
+    else:
+        print("Error: Unable to read frame")
+        return None
+

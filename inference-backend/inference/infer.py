@@ -1,5 +1,5 @@
 from . import *
-from calculate import verify_eqn2, roi
+from .calculate import verify_eqn2, roi
 
 def get_average_vector(roi):
     # Calculate the mean along the height and width (axis 0 and 1), resulting in mean color
@@ -55,9 +55,8 @@ def find_closest_filename(folder_path, target):
 
     return closest_filename, best_ctk
 
-def predict_liveliness(datafile, frames, color_changes, lr_model_path):
+def predict_liveliness(datafile, frames, color_changes, lr_model):
     dVals = []
-    #load in model weights
 
     for i in range(len(datafile)):  # for each color change
         color1, color2 = color_changes.iloc[i, 0], color_changes.iloc[i, 1]
@@ -92,7 +91,7 @@ def predict_liveliness(datafile, frames, color_changes, lr_model_path):
         roi_image = img[:, int(a):int(b)]
 
         rois = [roi_image]
-        y_hat_i = lr_predict(lr_model_path, rois)
+        y_hat_i = lr_predict(lr_model, rois)
         d_i = y_hat_i[0] - (u + u + imgRows * 0.2) / 2  # band is shown on 20% of screen
         dVals.append(d_i)
 
@@ -101,3 +100,12 @@ def predict_liveliness(datafile, frames, color_changes, lr_model_path):
     threshold = -5
 
     return mean * np.sqrt(var) < np.exp(threshold)
+
+
+def generate_embedding(image_array):
+    # Convert the numpy array to PIL image
+    img = Image.fromarray(image_array.astype('uint8'))
+    embedding_objs = DeepFace.represent(img_path=img, model_name='VGG-Face', enforce_detection=False)
+    embedding = embedding_objs[0]["embedding"]
+
+    return embedding
