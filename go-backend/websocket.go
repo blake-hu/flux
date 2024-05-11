@@ -23,7 +23,8 @@ type AuthenticationResultPayload struct {
 }
 
 type ReadyForBandColorPayload struct {
-	Email string `json:"email"`
+	Email       string    `json:"email"`
+	InitialTime time.Time `json:"initialTime"`
 }
 
 type ColorCommandAckPayload struct {
@@ -38,6 +39,7 @@ type SetBandColorPayload struct {
 	BackgroundColor string `json:"backgroundColor"`
 	StripColor      string `json:"stripColor"`
 	StripPosition   uint16 `json:"stripPosition"`
+	Index           int    `json:"index"`
 }
 
 type IceOfferPayload struct {

@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -20,7 +21,7 @@ import (
 
 	"github.com/pion/webrtc/v4"
 	"github.com/pion/webrtc/v4/pkg/media"
-	"github.com/pion/webrtc/v4/pkg/media/h264writer"
+	"github.com/pion/webrtc/v4/pkg/media/ivfwriter"
 )
 
 var schema = `
@@ -38,6 +39,10 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+type InferenceBackendResponse struct {
+	Authenticated bool `json:"authenticated"`
 }
 
 const PORT = "8080"
@@ -127,6 +132,23 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer peerConnection.Close()
 
+	peerConnection.OnTrack(func(track *webrtc.TrackRemote, recv *webrtc.RTPReceiver) {
+		codec := track.Codec()
+		log.Printf("New Track %s %s %s", track.Kind().String(), track.ID(), track.Codec().MimeType)
+		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
+
+			folderPath := "./files/video"
+			os.MkdirAll(folderPath, os.ModePerm)
+			h264File, err := ivfwriter.New(fmt.Sprintf("%s/%s.ivf", folderPath, sessionId))
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("Got VP8 track, saving to disk as %s.ivf\n", sessionId)
+			saveToDisk(h264File, track)
+		}
+	})
+	log.Printf("registered OnTrack")
+
 	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate != nil {
 			msg, err := MarshalWsMessage(WsMessage{
@@ -143,22 +165,6 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			ws.WriteMessage(websocket.TextMessage, []byte(msg))
 
-		}
-	})
-
-	folderPath := "./files/video"
-	os.MkdirAll(folderPath, os.ModePerm)
-	h264File, err := h264writer.New(fmt.Sprintf("%s/%s.mp4", folderPath, sessionId))
-	if err != nil {
-		panic(err)
-	}
-
-	peerConnection.OnTrack(func(track *webrtc.TrackRemote, recv *webrtc.RTPReceiver) {
-		codec := track.Codec()
-		log.Printf("New Track %s %s", track.Kind().String(), track.ID())
-		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
-			fmt.Printf("Got VP8 track, saving to disk as %s.mp4\n", sessionId)
-			saveToDisk(h264File, track)
 		}
 	})
 
@@ -222,13 +228,14 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			session.Email = payload.Email
+			session.InitialTime = payload.InitialTime
 
 			colors := [3]string{"red", "green", "blue"}
 			// TODO: seeding this off time can be unsecure
 			rng := rand.New(rand.NewSource(time.Now().Unix()))
 			sendRandomColor := func() error {
-				const stripPercentMax = 90
-				const stripPercentMin = 10
+				const stripPercentMax = 75
+				const stripPercentMin = 25
 				backgroundColor := colors[rng.Int()%len(colors)]
 				var stripColor = colors[rng.Int()%len(colors)]
 				for stripColor == backgroundColor {
@@ -242,6 +249,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 						BackgroundColor: backgroundColor,
 						StripColor:      stripColor,
 						StripPosition:   uint16(stripPosition),
+						Index:           len(session.SentColorCommands),
 					}})
 				if err != nil {
 					return err
@@ -295,9 +303,8 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 					log.Println("Failed to create CSV file")
 					return
 				}
-				defer csvFile.Close()
 				writer := csv.NewWriter(csvFile)
-				defer writer.Flush()
+				defer csvFile.Close()
 
 				if err := writer.Write([]string{"Background Color", "Strip Color", "Strip Position", "Timestamap"}); err != nil {
 					log.Printf("Failed to write CSV header")
@@ -305,6 +312,7 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				}
 
 				for _, cmd := range session.SentColorCommands {
+					fmt.Printf("Writing color command to CSV: %v\n", cmd)
 					record := []string{
 						cmd.BackgroundColor,
 						cmd.StripColor,
@@ -316,15 +324,42 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
+				writer.Flush()
 				fmt.Printf("Email: %s\n", email)
 
 				// make http request with csv file and video file
+				delta := session.SentColorCommands[0].TimeStamp.Sub(session.InitialTime)
+				delta_ms := delta.Microseconds()
+				fmt.Printf("delta_ms: %d\n", delta_ms)
+
+				// make http request to inference backend with csv file and video
+				fmt.Println("Sending request to inference backend")
+				resp, err := http.Post(INFERENCE_BACKEND_URL+"/liveness_detection", "application/json", strings.NewReader(fmt.Sprintf(`{"sessionId": "%s", "start_offset": "%d"}`, sessionId, delta_ms)))
+				if err != nil {
+					log.Printf("Failed to make request to inference backend: %s", err.Error())
+					return
+				}
+				fmt.Println("Request sent")
+				// get "authenticated" field from resp json
+				defer resp.Body.Close()
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					log.Printf("Failed to read response body: %s", err.Error())
+					return
+				}
+				// print contents of response body
+				fmt.Printf("Response body: %s\n", body)
+				var inferenceResponse InferenceBackendResponse
+				if err := json.Unmarshal(body, &inferenceResponse); err != nil {
+					log.Printf("Failed to unmarshal response body: %s", err.Error())
+					return
+				}
 
 				// send authenticationResult
 				msg, err := MarshalWsMessage(WsMessage{
 					Command: AuthenticationResult,
 					Payload: AuthenticationResultPayload{
-						Success: true,
+						Success: inferenceResponse.Authenticated,
 					},
 				})
 				if err != nil {
