@@ -14,7 +14,7 @@
 
 .signIn{
   color: #000000;
-  font-family: "Inter-Regular", Helvetica;
+  font-family: "Roboto-Regular", Helvetica;
   font-size: 32px;
   font-weight: 400;
   text-align: center;
@@ -23,7 +23,7 @@
 
 .with{
   color: #000000;
-  font-family: "Inter-Regular", Helvetica;
+  font-family: "Roboto-Regular", Helvetica;
   font-size: 20px;
   font-weight: 400;
   letter-spacing: 0;
@@ -45,7 +45,7 @@
 
 .forgotPassword {
     color: #000000;
-    font-family: "Inter-Regular", Helvetica;
+    font-family: "Roboto-Regular", Helvetica;
     font-size: 15px;
     font-weight: 400;
     letter-spacing: 0;
@@ -64,7 +64,7 @@
 
 .register {
     color: #000000;
-    font-family: "Inter-Regular", Helvetica;
+    font-family: "Roboto-Regular", Helvetica;
     font-size: 15px;
     font-weight: 400;
     letter-spacing: 0;
@@ -109,7 +109,7 @@
     text-align: center;
     display:block;
     font-size: 40px;
-    font-family: "Inter-Regular", Helvetica;
+    font-family: "Roboto-Regular", Helvetica;
     padding-top: 45%;
 }
 
@@ -125,7 +125,7 @@
     text-align: center;
     display:block;
     font-size: 40px;
-    font-family: "Inter-Regular", Helvetica;
+    font-family: "Roboto-Regular", Helvetica;
     padding-top: 35%;
 }
 
@@ -150,7 +150,7 @@
 
 ul{
     color: #000;
-    font-family: Inter;
+    font-family: Roboto;
     font-size: 20px;
     font-style: normal;
     font-weight: 400;
@@ -167,7 +167,7 @@ li{
 }
 .instructionHead{
     color: #000;
-    font-family: Inter;
+    font-family: Roboto;
     font-size: 30px;
     font-style: normal;
     font-weight: 400;
@@ -199,7 +199,7 @@ li{
     text-align: center;
     position: absolute;
     font-size: 40px;
-    font-family: "Inter-Regular", Helvetica;
+    font-family: "Roboto-Regular", Helvetica;
     top:10%;
     left: 0; 
     right: 0; 

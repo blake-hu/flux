@@ -58,7 +58,6 @@ def crop_frames(cropped_path, frames_path):
 
     for filename in sorted(os.listdir(frames_path)):
         frame_path = os.path.join(frames_path, filename)
-        print(frame_path)
 
         if os.path.isfile(frame_path):  # Check if it's a file (not a subdirectory)
             # face detection and alignment
