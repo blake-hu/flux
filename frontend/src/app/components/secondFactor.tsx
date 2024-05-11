@@ -133,6 +133,9 @@ export default function SecondFactor({ success, failure, email }) {
 
   useInterval(() => {
     if (display && nextData.length !== 0) {
+      if (nextData[0].index === 9) {
+        displayProcessing();
+      }
       setBackgroundCol(nextData[0].backgroundColor);
       setBandPos(nextData[0].stripPosition + "%");
       setBandCol(nextData[0].stripColor);
@@ -220,9 +223,6 @@ export default function SecondFactor({ success, failure, email }) {
               candidateQueue.push(candidate);
             }
           } else if (message.command === "setBandColor") {
-            if (message.payload.index ===9) {
-              displayProcessing();
-            }
             if (message.payload.index === 0) {
               setDisplay(true);
             }
