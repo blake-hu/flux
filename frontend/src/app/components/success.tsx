@@ -3,7 +3,7 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import { Button } from '@mui/material';
 
-export default function Successful() {
+   export default function Successful() {
     return (
         <div className="successOutlineBorder">
             <h1><b>Authentication</b></h1>
