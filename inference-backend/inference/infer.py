@@ -67,6 +67,8 @@ def predict_liveliness(datafile_path, frames, color_changes, lr_model):
         t_u = startTime + offset
 
         filename, ct_k = find_closest_filename(frames, t_u)
+        if filename is None:
+            continue
         img = cv2.imread(f'{frames}/{filename}')
 
         # imgIndex = np.sum(frametime_list<t_u)-1 #find all frames capturing time less than t_u, select last one

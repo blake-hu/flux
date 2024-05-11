@@ -60,7 +60,7 @@ def liveness_detection():
     lr_model_path = "model.joblib"  # TODO (change model path)
 
     # integer in micro seconds 10^-6
-    delete_duration = int(json_data['start_offset'])/1000000
+    start_offset = int(json_data['start_offset'])
 
     if not os.path.exists(lr_model_path):
         return jsonify({'error': 'LR model does not exist'})
@@ -75,8 +75,10 @@ def liveness_detection():
             lr_model = joblib.load(lr_model_path)
 
             # split video into frames
+            print('splitting video')
             process.split_video(cropped_video_path,
-                                frames_path)
+                                frames_path, start_offset)
+            print('cropping frames')
             # crop frames
             success = process.crop_frames(cropped_path, frames_path)
             if not success:
@@ -84,8 +86,10 @@ def liveness_detection():
                 return jsonify({'error': 'Could not detect face'})
 
             # find color changes
+            print('calculating color changes')
             color_changes = calculate.color_change(csv_path)
             # liveness detection
+            print('predicting liveness')
             success = infer.predict_liveliness(
                 csv_path, cropped_path, color_changes, lr_model)
 
@@ -114,4 +118,4 @@ def liveness_detection():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)

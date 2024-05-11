@@ -1,10 +1,11 @@
 from . import *
 
 
-def split_video(input_video, output_directory1):
+def split_video(input_video, output_directory1, start_offset):
     # takes input video and output directory
     # Split video into frames in the videoframes directory
     # Runtime: ~60 seconds
+    # start_offset in microseconds
 
     # Delete directory if it already exists and make a new one
     if os.path.exists(output_directory1):
@@ -12,13 +13,22 @@ def split_video(input_video, output_directory1):
     os.makedirs(output_directory1)
 
     vidcap = cv2.VideoCapture(input_video)
-    fps = vidcap.get(cv2.CAP_PROP_FPS)  # get fps
+    fps = vidcap.get(cv2.CAP_PROP_FPS)  # get frames per second
     frametime_list = []
     print("FPS", fps)
+
+    # convert start_offset to seconds
+    start_offset = start_offset / 1000000
+    # convert start_offset to frames
+    frames_to_skip = int(start_offset * fps)
 
     if vidcap.isOpened():
         while True:
             ret, frame = vidcap.read()
+
+            if frames_to_skip > 0:
+                frames_to_skip -= 1
+                continue
 
             if not ret:
                 break
@@ -48,6 +58,7 @@ def crop_frames(cropped_path, frames_path):
 
     for filename in sorted(os.listdir(frames_path)):
         frame_path = os.path.join(frames_path, filename)
+        print(frame_path)
 
         if os.path.isfile(frame_path):  # Check if it's a file (not a subdirectory)
             # face detection and alignment
@@ -71,7 +82,7 @@ def crop_frames(cropped_path, frames_path):
                 could_not_detect += 1
                 pass
 
-    print(len(os.listdir(frames_path)))
+    print(f"num_frames: {len(os.listdir(frames_path))}")
 
     if could_not_detect > (len(os.listdir(frames_path)) // 2):
         return False

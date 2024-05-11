@@ -3,6 +3,7 @@
 *.mp4
 *.jpg
 *.csv
+*.ivf
 
 # python files
 *.pyc
