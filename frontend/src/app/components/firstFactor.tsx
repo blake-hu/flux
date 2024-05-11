@@ -4,11 +4,16 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import "./style.css";
 
-export default function FirstFactor({next}) {
+export default function FirstFactor({next, email, setEmail}) {
 
     const handleSubmit = (event: { preventDefault: () => void; }) => {
       event.preventDefault();
     };
+
+    const handleEmailChange = (event) => {
+      setEmail(event.target.value);
+    };
+  
   
     return (
       
@@ -21,7 +26,7 @@ export default function FirstFactor({next}) {
           <h1 className='signIn'>Sign In</h1>
           <h2 className='with'>with <b>Flux</b></h2>
           <div className="TextField">
-            <TextField className='textfield' required id="uid" label="Email" variant="outlined" />
+            <TextField className='textfield' required id="uid" label="Email" variant="outlined" value={email} onChange={handleEmailChange}/>
           </div>
           <div className="TextField">
             <TextField className='textfield' required id="password" label="Password" variant="outlined" />

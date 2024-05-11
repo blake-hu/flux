@@ -38,24 +38,9 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [pwd, setPwd] = useState('');
 
-  const [validEmail, setValidEmail] = useState(false);
-  const [validPwd, setValidPwd] = useState(false);
-
   const [firstSuccess, setFirstSuccess] = useState(false);
 
-  
-
-  useEffect(()=>{
-    const result = EMAIL_REGEX.test(email);
-    setValidEmail(result);
-  },[email]);
-
-  useEffect(()=>{
-    const result = PWD_REGEX.test(pwd);
-    setValidEmail(result);
-  },[email]);
-
-  const elements = [<FirstFactor next = {next}/>, <SecondFactor back={back}/>, <Success back={back}/>]
+  const elements = [<FirstFactor next = {next} email={email} setEmail={setEmail}/>, <SecondFactor next={next} email={email}/>, <Success />]
   return (
     <div>
       {elements[currentStepNumber]}

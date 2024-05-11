@@ -10,6 +10,7 @@ from ..inference import process, calculate, infer
 app = Flask(__name__)
 vgg_model = DeepFace.build_model('VGG-Face')
 
+
 @app.route('/generate_embedding', methods=['POST'])
 def generate_embedding():
 
@@ -46,6 +47,7 @@ def liveness_detection():
         session_Id = json_data['sessionId']
     else:
         return jsonify({'error': 'no sessionId'})
+    print(f"/liveness-detection: Session ID: {session_Id}")
 
     session_Id = request.files['session_Id']
     video_path = os.path.join('/video/', session_Id, '.mp4')
@@ -63,21 +65,25 @@ def liveness_detection():
             # find color changes
             color_changes = calculate.color_change(csv_path)
             # liveness detection
-            success = infer.predict_liveliness(csv_path, frames_path, color_changes, lr_model_path)
+            success = infer.predict_liveliness(
+                csv_path, frames_path, color_changes, lr_model_path)
 
             if success:
+                print("Liveness detection successful")
                 return jsonify({'authenticated': True})
             else:
+                print("Liveness detection failed")
                 return jsonify({'authenticated': False})
 
         else:
             # One or both files do not exist
+            print("One or both files not found")
             return jsonify({'error': 'One or both files not found'})
-        
+
     except Exception as e:
+        print(f"Error: {str(e)}")
         return jsonify({'error': str(e)})
 
-    # not done
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
