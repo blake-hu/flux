@@ -94,6 +94,7 @@ export default function SecondFactor({ success, failure, email }) {
   const [nextData, setNextData] = useState<any>([]);
   const [colorIndex, setColorIndex] = useState(0);
   const [videoAdded, setVideoAdded] = useState("");
+  const [finished, setFinished] = useState(false);
 
   const confirmColorChange = useCallback(() => {
     let date = new Date();
@@ -219,6 +220,14 @@ export default function SecondFactor({ success, failure, email }) {
               candidateQueue.push(candidate);
             }
           } else if (message.command === "setBandColor") {
+            if (message.payload.index === 10) {
+              setDisplay(false);
+              setFinished(true);
+              setBackgroundCol("");
+              setBandPos("");
+              setBandCol("");
+              return
+            }
             if (message.payload.index === 0) {
               setDisplay(true);
             }
@@ -309,6 +318,14 @@ export default function SecondFactor({ success, failure, email }) {
           </div>
         </div>
       )}
+
+      {finished && (
+        <div className="Processing">
+            <h1 style={{paddingTop:"45%"}}><b>Processing...</b></h1>
+        </div>
+      )}
+      
+      
     </>
   );
 }

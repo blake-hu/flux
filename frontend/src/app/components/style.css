@@ -186,3 +186,24 @@ li{
 .instructionButton:hover{
     background-color: gray;
 }
+
+
+.Processing{
+    background-color: #ffffff;
+    border: 2px solid;
+    border-color: gray;
+    border-radius: 15px;
+    height: 568px;
+    width: 500px;
+    color:gray;
+    text-align: center;
+    position: absolute;
+    font-size: 40px;
+    font-family: "Inter-Regular", Helvetica;
+    top:10%;
+    left: 0; 
+    right: 0; 
+    margin-left: auto; 
+    margin-right: auto; 
+ 
+}
