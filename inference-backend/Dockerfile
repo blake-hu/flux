@@ -14,8 +14,6 @@ WORKDIR /deploy/inference-backend
 COPY ./inference-backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./inference-backend/app .
-
-EXPOSE 5000
+COPY ./inference-backend .
 
 CMD ["python", "app.py"]

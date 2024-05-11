@@ -4,6 +4,8 @@ from PIL import Image
 import numpy as np
 import json
 import base64
+import os
+from ..inference import process, calculate, infer
 
 app = Flask(__name__)
 vgg_model = DeepFace.build_model('VGG-Face')
@@ -18,7 +20,7 @@ def generate_embedding():
     image_file = request.files['image']
 
     try:
-        img = Image.open(image_file)
+        img = Image.open(str(image_file))
         img_array = np.array(img).astype(int)
         embedding_objs = DeepFace.represent(
             img_path=img_array, model_name='VGG-Face', enforce_detection=False)
@@ -34,6 +36,53 @@ def generate_embedding():
     encoded_embedding = base64.b64encode(embedding_json.encode('utf-8'))
 
     return jsonify({'encoded_embedding': encoded_embedding.decode('utf-8')})
+
+
+@app.route('/liveness-detection', methods=['POST'])
+def liveness_detection():
+    json_data = request.json
+
+    session_Id = json_data['sessionId']
+    if json_data:
+        session_Id = json_data['sessionId']
+    else:
+        return jsonify({'error': 'no sessionId'})
+    print(f"/liveness-detection: Session ID: {session_Id}")
+
+    session_Id = request.files['session_Id']
+    video_path = os.path.join('/video/', session_Id, '.mp4')
+    csv_path = os.path.join('/csv/', session_Id, '.csv')
+    frames_path = os.path.join('/frames/', session_Id)
+    lr_model_path = ""
+    success = False
+
+    try:
+        if os.path.exists(video_path) and os.path.exists(csv_path):
+            # split video into frames
+            process.split_video(video_path, frames_path)
+            # crop frames
+            process.crop_frames(frames_path, frames_path)
+            # find color changes
+            color_changes = calculate.color_change(csv_path)
+            # liveness detection
+            success = infer.predict_liveliness(
+                csv_path, frames_path, color_changes, lr_model_path)
+
+            if success:
+                print("Liveness detection successful")
+                return jsonify({'authenticated': True})
+            else:
+                print("Liveness detection failed")
+                return jsonify({'authenticated': False})
+
+        else:
+            # One or both files do not exist
+            print("One or both files not found")
+            return jsonify({'error': 'One or both files not found'})
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'error': str(e)})
 
 
 if __name__ == '__main__':
