@@ -1,6 +1,7 @@
 from . import *
 from .calculate import verify_eqn2, roi
 
+
 def get_average_vector(roi):
     # Calculate the mean along the height and width (axis 0 and 1), resulting in mean color
     return np.mean(roi, axis=(0, 1))
@@ -25,6 +26,7 @@ def lr_predict(lr_model, rois):
 
     return predictions
 
+
 def find_closest_filename(folder_path, target):
     closest_filename = None
     closest_distance = float('inf')  # Initialize with a large number
@@ -37,8 +39,8 @@ def find_closest_filename(folder_path, target):
             number_part = filename.replace('frame_', '').replace('.jpg', '')
             try:
                 number = int(number_part)
-                if number <= target: # tu - ctk >= 30
-                # if target - number < 24:
+                if number <= target:  # tu - ctk >= 30
+                    # if target - number < 24:
                     # Calculate the absolute difference from the target
                     distance = abs(number - target)
 
@@ -53,8 +55,10 @@ def find_closest_filename(folder_path, target):
 
     return closest_filename, best_ctk
 
-def predict_liveliness(datafile, frames, color_changes, lr_model):
+
+def predict_liveliness(datafile_path, frames, color_changes, lr_model):
     dVals = []
+    datafile = pd.read_csv(datafile_path)
 
     for i in range(len(datafile)):  # for each color change
         color1, color2 = color_changes.iloc[i, 0], color_changes.iloc[i, 1]
@@ -90,7 +94,8 @@ def predict_liveliness(datafile, frames, color_changes, lr_model):
 
         rois = [roi_image]
         y_hat_i = lr_predict(lr_model, rois)
-        d_i = y_hat_i[0] - (u + u + imgRows * 0.2) / 2  # band is shown on 20% of screen
+        d_i = y_hat_i[0] - (u + u + imgRows * 0.2) / \
+            2  # band is shown on 20% of screen
         dVals.append(d_i)
 
     mean = np.mean(dVals)
@@ -103,7 +108,8 @@ def predict_liveliness(datafile, frames, color_changes, lr_model):
 def generate_embedding(image_array):
     # Convert the numpy array to PIL image
     img = Image.fromarray(image_array.astype('uint8'))
-    embedding_objs = DeepFace.represent(img_path=img, model_name='VGG-Face', enforce_detection=False)
+    embedding_objs = DeepFace.represent(
+        img_path=img, model_name='VGG-Face', enforce_detection=False)
     embedding = embedding_objs[0]["embedding"]
 
     return embedding

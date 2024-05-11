@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -38,6 +39,10 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+type InferenceBackendResponse struct {
+	Authenticated bool `json:"authenticated"`
 }
 
 const PORT = "8080"
@@ -327,11 +332,34 @@ func (app *App) wsHandler(w http.ResponseWriter, r *http.Request) {
 				delta_ms := delta.Microseconds()
 				fmt.Printf("delta_ms: %d\n", delta_ms)
 
+				// make http request to inference backend with csv file and video
+				fmt.Println("Sending request to inference backend")
+				resp, err := http.Post(INFERENCE_BACKEND_URL+"/liveness_detection", "application/json", strings.NewReader(fmt.Sprintf(`{"sessionId": "%s", "start_offset": "%d"}`, sessionId, delta_ms)))
+				if err != nil {
+					log.Printf("Failed to make request to inference backend: %s", err.Error())
+					return
+				}
+				fmt.Println("Request sent")
+				// get "authenticated" field from resp json
+				defer resp.Body.Close()
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					log.Printf("Failed to read response body: %s", err.Error())
+					return
+				}
+				// print contents of response body
+				fmt.Printf("Response body: %s\n", body)
+				var inferenceResponse InferenceBackendResponse
+				if err := json.Unmarshal(body, &inferenceResponse); err != nil {
+					log.Printf("Failed to unmarshal response body: %s", err.Error())
+					return
+				}
+
 				// send authenticationResult
 				msg, err := MarshalWsMessage(WsMessage{
 					Command: AuthenticationResult,
 					Payload: AuthenticationResultPayload{
-						Success: true,
+						Success: inferenceResponse.Authenticated,
 					},
 				})
 				if err != nil {

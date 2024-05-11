@@ -40,7 +40,7 @@ vgg_model = DeepFace.build_model('VGG-Face')
 #     return jsonify({'encoded_embedding': encoded_embedding.decode('utf-8')})
 
 
-@app.route('/liveness-detection', methods=['POST'])
+@app.route('/liveness_detection', methods=['POST'])
 def liveness_detection():
     json_data = request.json
 
@@ -57,10 +57,10 @@ def liveness_detection():
     csv_path = os.path.join('./files/csv', session_id + '.csv')
     frames_path = os.path.join('frames/video', session_id)
     cropped_path = os.path.join('frames/cropped', session_id)
-    lr_model_path = "model.joblib" # TODO (change model path)
+    lr_model_path = "model.joblib"  # TODO (change model path)
 
     # integer in micro seconds 10^-6
-    delete_duration = json_data['start_offset']/1000000
+    delete_duration = int(json_data['start_offset'])/1000000
 
     if not os.path.exists(lr_model_path):
         return jsonify({'error': 'LR model does not exist'})
@@ -75,7 +75,8 @@ def liveness_detection():
             lr_model = joblib.load(lr_model_path)
 
             # split video into frames
-            process.split_video(cropped_video_path, frames_path, delete_duration)
+            process.split_video(cropped_video_path,
+                                frames_path)
             # crop frames
             success = process.crop_frames(cropped_path, frames_path)
             if not success:
@@ -85,7 +86,8 @@ def liveness_detection():
             # find color changes
             color_changes = calculate.color_change(csv_path)
             # liveness detection
-            success = infer.predict_liveliness(csv_path, cropped_path, color_changes, lr_model)
+            success = infer.predict_liveliness(
+                csv_path, cropped_path, color_changes, lr_model)
 
             if not success:
                 return jsonify({'authenticated': False, 'embedding': None})
@@ -102,11 +104,14 @@ def liveness_detection():
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'})
 
-    embedding_json = json.dumps(embedding)  # Serialize the embedding list to JSON
-    encoded_embedding = base64.b64encode(embedding_json.encode('utf-8'))  # Encode the JSON string using Base64
+    # Serialize the embedding list to JSON
+    embedding_json = json.dumps(embedding)
+    encoded_embedding = base64.b64encode(embedding_json.encode(
+        'utf-8'))  # Encode the JSON string using Base64
 
     return jsonify({'authenticated': True,
                     'embedding': encoded_embedding.decode('utf-8')})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

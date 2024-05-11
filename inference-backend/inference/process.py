@@ -1,5 +1,6 @@
 from . import *
 
+
 def split_video(input_video, output_directory1):
     # takes input video and output directory
     # Split video into frames in the videoframes directory
@@ -36,6 +37,7 @@ def split_video(input_video, output_directory1):
         # frametime_list = np.array(frametime_list)
 
         print(f"Video frames saved in '{output_directory1}'")
+
 
 def crop_frames(cropped_path, frames_path):
     # CONVERT FRAMES INTO CROPPED FRAMES
@@ -76,6 +78,7 @@ def crop_frames(cropped_path, frames_path):
 
     return True
 
+
 def get_random_frame(video_file):
     cap = cv2.VideoCapture(video_file)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -88,4 +91,3 @@ def get_random_frame(video_file):
     else:
         print("Error: Unable to read frame")
         return None
-

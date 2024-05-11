@@ -6,4 +6,4 @@ tf-keras
 scikit-learn
 opencv-python
 joblib
-ffmpeg
+ffmpeg-python

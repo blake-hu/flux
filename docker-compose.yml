@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: mydb
     ports:
       - "5432:5432"
+    networks:
+      - backend-network
     volumes:
       - pgdata:/var/lib/postgresql/data
   
@@ -22,6 +24,8 @@ services:
     ports:
       - "8080:8080"
       - "10000-10100:10000-10100/udp"
+    networks:
+      - backend-network
     volumes:
       - backend:/deploy/go-backend/files
 
@@ -33,9 +37,15 @@ services:
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
+    networks:
+      - backend-network
     volumes:
       - backend:/deploy/inference-backend/files
 
 volumes:
   backend:
   pgdata:
+
+networks:
+  backend-network:
+    driver: bridge
