@@ -220,13 +220,8 @@ export default function SecondFactor({ success, failure, email }) {
               candidateQueue.push(candidate);
             }
           } else if (message.command === "setBandColor") {
-            if (message.payload.index === 10) {
-              setDisplay(false);
-              setFinished(true);
-              setBackgroundCol("");
-              setBandPos("");
-              setBandCol("");
-              return
+            if (message.payload.index ===9) {
+              displayProcessing();
             }
             if (message.payload.index === 0) {
               setDisplay(true);
@@ -254,6 +249,15 @@ export default function SecondFactor({ success, failure, email }) {
       }
     })();
   }, []);
+
+  async function displayProcessing() {
+    await sleep(600);
+    setDisplay(false);
+    setFinished(true);
+    setBackgroundCol("");
+    setBandPos("");
+    setBandCol("");
+  }
 
   return (
     <>
