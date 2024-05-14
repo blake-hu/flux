@@ -1,9 +1,14 @@
+# media files
 *.jpeg
 *.png
 *.mp4
 *.jpg
 *.csv
 *.ivf
+
+# model files
+*.pkl
+*.joblib
 
 # python files
 *.pyc
