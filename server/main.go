@@ -48,7 +48,7 @@ type InferenceBackendResponse struct {
 const PORT = "8080"
 const COLOR_CHALLENGES = 10
 const EMBEDDING_THRESHOLD = 0.5
-const INFERENCE_BACKEND_URL = "http://inference-backend:5000"
+const INFERENCE_BACKEND_URL = "http://inference:5000"
 
 type App struct {
 	db             *sqlx.DB

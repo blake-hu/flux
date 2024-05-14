@@ -13,10 +13,10 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
   
-  go-backend:
+  server:
     build:
       context: .
-      dockerfile: ./go-backend/Dockerfile
+      dockerfile: ./server/Dockerfile
     depends_on:
       - db
     environment:
@@ -27,20 +27,20 @@ services:
     networks:
       - backend-network
     volumes:
-      - backend:/deploy/go-backend/files
+      - backend:/deploy/server/files
 
-  inference-backend:
-    image: inference-backend:latest
+  inference:
+    image: inference:latest
     build:
       context: .
-      dockerfile: ./inference-backend/Dockerfile
+      dockerfile: ./inference/Dockerfile
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
     networks:
       - backend-network
     volumes:
-      - backend:/deploy/inference-backend/files
+      - backend:/deploy/inference/files
 
 volumes:
   backend:
