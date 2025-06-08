@@ -1,4 +1,0 @@
-deepface
-tf_keras
-matplotlib
-scikit-learn
