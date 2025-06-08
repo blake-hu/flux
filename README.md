@@ -1,6 +1,6 @@
 # Flux
 
-Flux is a distributed, spoof-resistant facial authentication service.
+Flux is a distributed, spoof-resistant facial authentication service. [Best Overall Project](https://www.linkedin.com/posts/blakehy_last-week-i-had-the-opportunity-to-participate-activity-7196299186416291841-EdDT?utm_source=share&utm_medium=member_desktop&rcm=ACoAACm_IeoBax4nENaSuDduUkjMfMO9zsG0t5U) at Northwestern's 2024 IEEE Technical Program.
 
 * **Distributed**: Built on peer-to-peer protocols like WebRTC and WebSocket with a scalable microservice architecture.
 * **Spoof-resistant**: Detects face spoofs and deepfakes using camera physics and a regression model, as described in [this paper](https://arxiv.org/abs/1801.01949).
