@@ -40,7 +40,6 @@ def find_closest_filename(folder_path, target):
             try:
                 number = int(number_part)
                 if number <= target:  # tu - ctk >= 30
-                    # if target - number < 24:
                     # Calculate the absolute difference from the target
                     distance = abs(number - target)
 
@@ -71,20 +70,11 @@ def predict_liveliness(datafile_path, frames, color_changes, lr_model):
             continue
         img = cv2.imread(f'{frames}/{filename}')
 
-        # imgIndex = np.sum(frametime_list<t_u)-1 #find all frames capturing time less than t_u, select last one
-        # imgPath = f'{frames}/frame_' + str(frametime_list[imgIndex]) + ".jpg"
-        # print(imgPath)
-        # img = cv2.imread(imgPath)
-        # print(img.shape)
-
         exposureTime = 50  # ideally should get file timestamp, if we get frametime list here for the current video file, can get it from there
-        # (AFTER ct_k) - ct_k
-        # frametime_list[imgIndex+1]-frametime_list[imgIndex]
 
         # calculate eqn2
         inconsistency = verify_eqn2(color1, color2, img)
         if inconsistency > 0.1:  # STOP HERE IF DOESNT PASS
-            # print("INCONSISTENT")
             continue
 
         a, b = roi(t_u, startTime, exposureTime, img)
